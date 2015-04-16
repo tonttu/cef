@@ -11,6 +11,7 @@
     'framework_name': 'Chromium Embedded Framework',
     'commit_number': '<!(python tools/commit_number.py)',
     'chrome_version': '<!(python ../build/util/version.py -f ../chrome/VERSION -t "@MAJOR@.@MINOR@.@BUILD@.@PATCH@")',
+    'cef_short_version': '<!(python ../build/util/version.py -f VERSION -f ../chrome/VERSION -t "@CEF_MAJOR@.@BUILD@.<(commit_number)")',
     # Need to be creative to match dylib version formatting requirements.
     'version_mac_dylib':
         '<!(python ../build/util/version.py -f VERSION -f ../chrome/VERSION -t "@CEF_MAJOR@<(commit_number).@BUILD_HI@.@BUILD_LO@" -e "BUILD_HI=int(BUILD)/256" -e "BUILD_LO=int(BUILD)%256")',
@@ -62,7 +63,7 @@
           'dependencies': [
             '<(DEPTH)/content/content_shell_and_tests.gyp:content_shell_crash_service',
             'cef_sandbox',
-            'libcef',
+            'libcef-<(cef_short_version)',
           ],
           'defines': [
             'CEF_USE_ATL',
@@ -186,7 +187,7 @@
           'dependencies': [
             'gtk',
             'gtkglext',
-            'libcef',
+            'libcef-<(cef_short_version)',
           ],
           'link_settings': {
             'libraries': [
@@ -249,7 +250,7 @@
         ['OS=="win"', {
           'dependencies': [
             'cef_sandbox',
-            'libcef',
+            'libcef-<(cef_short_version)',
           ],
           'defines': [
             'CEF_USE_SANDBOX',
@@ -367,7 +368,7 @@
         }],
         [ 'OS=="linux" or OS=="freebsd" or OS=="openbsd"', {
           'dependencies': [
-            'libcef',
+            'libcef-<(cef_short_version)',
           ],
           'link_settings': {
             'libraries': [
@@ -475,7 +476,7 @@
         [ 'OS=="win"', {
           'dependencies': [
             'cef_sandbox',
-            'libcef',
+            'libcef-<(cef_short_version)',
           ],
           'sources': [
             'tests/cefclient/cefclient.rc',
@@ -576,7 +577,7 @@
         }],
         [ 'OS=="linux" or OS=="freebsd" or OS=="openbsd"', {
           'dependencies': [
-            'libcef',
+            'libcef-<(cef_short_version)',
           ],
           'sources': [
             'tests/cefclient/resource_util_linux.cc',
@@ -616,7 +617,7 @@
           ],
         }, {  # OS!="mac"
           'dependencies': [
-            'libcef',
+            'libcef-<(cef_short_version)',
           ],
         }],
       ],
@@ -1618,7 +1619,7 @@
     }, {  # OS!="mac"
       'targets': [
       {
-        'target_name': 'libcef',
+        'target_name': 'libcef-<(cef_short_version)',
         'type': 'shared_library',
         'msvs_guid': 'C13650D5-CF1A-4259-BE45-B1EBA6280E47',
         'dependencies': [
