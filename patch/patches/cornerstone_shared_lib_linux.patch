@@ -1,0 +1,171 @@
+diff --git base/base_paths_posix.cc base/base_paths_posix.cc
+index a60e112..7a13746 100644
+--- base/base_paths_posix.cc
++++ base/base_paths_posix.cc
+@@ -31,8 +31,30 @@
+ #include <stdlib.h>
+ #endif
+ 
++#include <dlfcn.h>
++
+ namespace base {
+ 
++static const char * s_path = 0;
++
++__attribute__((constructor))
++void InitSharedLibPath()
++{
++  Dl_info dl_info;
++  if (dladdr((void*)InitSharedLibPath, &dl_info)) {
++    std::string path = FilePath(dl_info.dli_fname).DirName().value();
++    s_path = new char[path.length()+1];
++    memcpy((void*)s_path, path.c_str(), path.length()+1);
++  }
++}
++
++__attribute__((destructor))
++void DeinitSharedLibPath()
++{
++  delete[] s_path;
++  s_path = 0;
++}
++
+ bool PathProviderPosix(int key, FilePath* result) {
+   FilePath path;
+   switch (key) {
+@@ -113,6 +135,12 @@ bool PathProviderPosix(int key, FilePath* result) {
+       *result = cache_dir;
+       return true;
+     }
++    case base::DIR_SHARED_LIB:
++      if (s_path) {
++        *result = FilePath(s_path);
++        return true;
++      }
++      return false;
+   }
+   return false;
+ }
+diff --git base/base_paths_posix.h base/base_paths_posix.h
+index ef002ae..87e151b 100644
+--- base/base_paths_posix.h
++++ base/base_paths_posix.h
+@@ -19,6 +19,10 @@ enum {
+                 // browser cache can be a subdirectory.
+                 // This is $XDG_CACHE_HOME on Linux and
+                 // ~/Library/Caches on Mac.
++
++  DIR_SHARED_LIB, // If compiled as a shared library, the location of
++                  // the file.
++
+   PATH_POSIX_END
+ };
+ 
+diff --git base/i18n/icu_util.cc base/i18n/icu_util.cc
+index 124336b..62373ee 100644
+--- base/i18n/icu_util.cc
++++ base/i18n/icu_util.cc
+@@ -12,6 +12,7 @@
+ 
+ #include "base/debug/alias.h"
+ #include "base/files/file_path.h"
++#include "base/files/file_util.h"
+ #include "base/files/memory_mapped_file.h"
+ #include "base/logging.h"
+ #include "base/path_service.h"
+@@ -115,6 +116,13 @@ void LazyInitIcuDataFile() {
+   DCHECK(path_ok);
+   data_path = data_path.AppendASCII(kIcuDataFileName);
+ 
++#if !defined(OS_WIN)
++  if (!base::PathExists(data_path)) {
++    PathService::Get(base::DIR_SHARED_LIB, &data_path);
++    data_path = data_path.AppendASCII(kIcuDataFileName);
++  }
++#endif
++
+ #if defined(OS_WIN)
+   // TODO(scottmg): http://crbug.com/445616
+   wchar_t tmp_buffer2[_MAX_PATH] = {0};
+@@ -134,8 +140,13 @@ void LazyInitIcuDataFile() {
+   }
+ #endif  // !defined(OS_IOS)
+   if (data_path.empty()) {
+-    LOG(ERROR) << kIcuDataFileName << " not found in bundle";
+-    return;
++    PathService::Get(base::DIR_SHARED_LIB, &data_path);
++    data_path = data_path.AppendASCII(kIcuDataFileName);
++
++    if (!base::PathExists(data_path)) {
++      LOG(ERROR) << kIcuDataFileName << " not found in bundle";
++      return;
++    }
+   }
+ #endif  // !defined(OS_MACOSX)
+   File file(data_path, File::FLAG_OPEN | File::FLAG_READ);
+diff --git chrome/browser/media/pepper_cdm_test_helper.cc chrome/browser/media/pepper_cdm_test_helper.cc
+index 734e813..eca3c239 100644
+--- chrome/browser/media/pepper_cdm_test_helper.cc
++++ chrome/browser/media/pepper_cdm_test_helper.cc
+@@ -19,7 +19,7 @@
+ base::FilePath GetPepperCdmPath(const std::string& adapter_base_dir,
+                                 const std::string& adapter_file_name) {
+   base::FilePath adapter_path;
+-  PathService::Get(base::DIR_MODULE, &adapter_path);
++  PathService::Get(base::DIR_SHARED_LIB, &adapter_path);
+   adapter_path = adapter_path.Append(
+       media::GetPlatformSpecificDirectory(adapter_base_dir));
+   adapter_path = adapter_path.AppendASCII(adapter_file_name);
+diff --git chrome/common/chrome_paths.cc chrome/common/chrome_paths.cc
+index 8649931..1aa1f27 100644
+--- chrome/common/chrome_paths.cc
++++ chrome/common/chrome_paths.cc
+@@ -83,7 +83,7 @@ bool GetInternalPluginsDirectory(base::FilePath* result) {
+ #endif
+ 
+   // The rest of the world expects plugins in the module directory.
+-  return PathService::Get(base::DIR_MODULE, result);
++  return PathService::Get(base::DIR_SHARED_LIB, result);
+ }
+ 
+ // Gets the path for bundled implementations of components. Note that these
+@@ -102,7 +102,7 @@ bool GetComponentDirectory(base::FilePath* result) {
+ #endif
+ 
+   // The rest of the world expects components in the module directory.
+-  return PathService::Get(base::DIR_MODULE, result);
++  return PathService::Get(base::DIR_SHARED_LIB, result);
+ }
+ 
+ #if defined(OS_WIN)
+diff --git gin/v8_initializer.cc gin/v8_initializer.cc
+index 99276f4..a06bea2 100644
+--- gin/v8_initializer.cc
++++ gin/v8_initializer.cc
+@@ -87,7 +87,7 @@ void GetV8FilePath(const char* file_name, base::FilePath* path_out) {
+   // This is the path within the .apk.
+   data_path = base::FilePath(FILE_PATH_LITERAL("assets"));
+ #elif defined(OS_POSIX)
+-  PathService::Get(base::DIR_EXE, &data_path);
++  PathService::Get(base::DIR_SHARED_LIB, &data_path);
+ #elif defined(OS_WIN)
+   PathService::Get(base::DIR_MODULE, &data_path);
+ #endif
+diff --git sandbox/linux/suid/client/setuid_sandbox_host.cc sandbox/linux/suid/client/setuid_sandbox_host.cc
+index 24608ec..b4417cf 100644
+--- sandbox/linux/suid/client/setuid_sandbox_host.cc
++++ sandbox/linux/suid/client/setuid_sandbox_host.cc
+@@ -126,6 +126,13 @@ base::FilePath SetuidSandboxHost::GetSandboxBinaryPath() {
+       sandbox_binary = sandbox_candidate;
+   }
+ 
++  base::FilePath lib_dir;
++  if (sandbox_binary.empty() && PathService::Get(base::DIR_SHARED_LIB, &lib_dir)) {
++    base::FilePath sandbox_candidate = lib_dir.AppendASCII("chrome-sandbox");
++    if (base::PathExists(sandbox_candidate))
++      sandbox_binary = sandbox_candidate;
++  }
++
+   // In user-managed builds, including development builds, an environment
+   // variable is required to enable the sandbox. See
+   // https://chromium.googlesource.com/chromium/src/+/master/docs/linux_suid_sandbox_development.md
