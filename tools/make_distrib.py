@@ -282,8 +282,10 @@ args = {}
 read_version_file(os.path.join(cef_dir, 'VERSION'), args)
 read_version_file(os.path.join(cef_dir, '../chrome/VERSION'), args)
 
-cef_ver = '%s.%s.%s.g%s' % (args['CEF_MAJOR'], args['BUILD'], cef_commit_number, cef_rev[:7])
+cef_short_ver = '%s.%s' % (args['CEF_MAJOR'], args['BUILD'])
+cef_ver = '%s.%s.g%s' % (cef_short_ver, cef_commit_number, cef_rev[:7])
 chromium_ver = args['MAJOR']+'.'+args['MINOR']+'.'+args['BUILD']+'.'+args['PATCH']
+libcef_name = 'libcef-%s' % cef_short_ver
 
 # list of output directories to be archived
 archive_dirs = []
@@ -295,8 +297,8 @@ if options.x64build:
 if platform == 'linux':
   platform_arch = ''
   lib_dir_name = 'lib'
-  release_libcef_path = os.path.join(src_dir, 'out', 'Release', lib_dir_name, 'libcef.so');
-  debug_libcef_path = os.path.join(src_dir, 'out', 'Debug', lib_dir_name, 'libcef.so');
+  release_libcef_path = os.path.join(src_dir, 'out', 'Release', lib_dir_name, libcef_name + '.so');
+  debug_libcef_path = os.path.join(src_dir, 'out', 'Debug', lib_dir_name, libcef_name + '.so');
   file_desc = ''
   output = subprocess.check_output('file ' + release_libcef_path + ' ' + debug_libcef_path + '; exit 0',
                                   env=os.environ, stderr=subprocess.STDOUT, shell=True)
@@ -621,7 +623,7 @@ elif platform == 'linux':
       dst_dir = os.path.join(output_dir, 'Debug')
       make_dir(dst_dir, options.quiet)
       copy_file(os.path.join(build_dir, 'chrome_sandbox'), os.path.join(dst_dir, 'chrome-sandbox'), options.quiet)
-      copy_file(os.path.join(build_dir, lib_dir_name, 'libcef.so'), dst_dir, options.quiet)
+      copy_file(os.path.join(build_dir, lib_dir_name, libcef_name + '.so'), dst_dir, options.quiet)
       copy_file(os.path.join(build_dir, 'libffmpegsumo.so'), dst_dir, options.quiet)
       copy_file(os.path.join(build_dir, 'natives_blob.bin'), dst_dir, options.quiet)
       copy_file(os.path.join(build_dir, 'snapshot_blob.bin'), dst_dir, options.quiet)
@@ -638,10 +640,10 @@ elif platform == 'linux':
     if mode == 'client':
       lib_dst_dir = os.path.join(dst_dir, lib_dir_name)
       make_dir(lib_dst_dir, options.quiet)
-      copy_file(os.path.join(build_dir, lib_dir_name, 'libcef.so'), lib_dst_dir, options.quiet)
+      copy_file(os.path.join(build_dir, lib_dir_name, libcef_name + '.so'), lib_dst_dir, options.quiet)
       copy_file(os.path.join(build_dir, 'cefclient'), dst_dir, options.quiet)
     else:
-      copy_file(os.path.join(build_dir, lib_dir_name, 'libcef.so'), dst_dir, options.quiet)
+      copy_file(os.path.join(build_dir, lib_dir_name, libcef_name + '.so'), dst_dir, options.quiet)
     copy_file(os.path.join(build_dir, 'chrome_sandbox'), os.path.join(dst_dir, 'chrome-sandbox'), options.quiet)
     copy_file(os.path.join(build_dir, 'libffmpegsumo.so'), dst_dir, options.quiet)
     copy_file(os.path.join(build_dir, 'natives_blob.bin'), dst_dir, options.quiet)
