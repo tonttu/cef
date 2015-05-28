@@ -1485,6 +1485,100 @@ typedef struct _cef_mouse_event_t {
 } cef_mouse_event_t;
 
 ///
+// Touch points states types.
+///
+enum cef_touch_point_type_t {
+  TPT_UNDEFINED = 0,
+  TPT_RELEASED,
+  TPT_PRESSED,
+  TPT_MOVED,
+  TPT_STATIONARY,
+  TPT_CANCELLED
+};
+
+///
+// Structure representing touch point information.
+///
+typedef struct _cef_touch_point_t {
+  ///
+  // System touch point id.
+  ///
+  int id;
+
+  ///
+  // X coordinate relative to the left side of the view.
+  ///
+  float x;
+
+  ///
+  // Y coordinate relative to the top side of the view.
+  ///
+  float y;
+
+  ///
+  // X coordinate relative to the left side of the screen.
+  ///
+  float screen_x;
+
+  ///
+  // Y coordinate relative to the top side of the screen.
+  ///
+  float screen_y;
+
+  ///
+  // X radius.
+  ///
+  float radius_x;
+
+  ///
+  // Y radius.
+  ///
+  float radius_y;
+
+  ///
+  // angle.
+  ///
+  float rotation_angle;
+
+  ///
+  // force.
+  ///
+  float force;
+
+  ///
+  // The state of the touchpoint
+  ///
+  cef_touch_point_type_t type;
+} cef_touch_point_t;
+
+///
+// Structure representing touch event information.
+///
+typedef struct _cef_touch_event_t {
+  ///
+  // Number of touch points in this event. Should be less or equal to 16.
+  ///
+  uint32 count;
+
+  ///
+  // List of touch points. WebKit supports a maximum of 16 simultaneous touch
+  // points, see WebInputEvent class in WebTouchEvent.h
+  ///
+  cef_touch_point_t points[16];
+
+  ///
+  // Bit flags describing any pressed modifier keys. See
+  // cef_event_flags_t for values.
+  ///
+  uint32 modifiers;
+
+  ///
+  // Time since epoch
+  ///
+  double timestamp_seconds;
+} cef_touch_event_t;
+
+///
 // Paint element types.
 ///
 typedef enum {

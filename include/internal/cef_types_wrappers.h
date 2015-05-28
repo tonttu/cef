@@ -358,6 +358,54 @@ struct CefMouseEventTraits {
 ///
 typedef CefStructBase<CefMouseEventTraits> CefMouseEvent;
 
+struct CefTouchPointTraits {
+  typedef cef_touch_point_t struct_type;
+
+  static inline void init(struct_type* s) {}
+
+  static inline void clear(struct_type* s) {}
+
+  static inline void set(const struct_type* src, struct_type* target,
+    bool copy) {
+    target->id = src->id;
+    target->x = src->x;
+    target->y = src->y;
+    target->screen_x = src->screen_x;
+    target->screen_y = src->screen_y;
+    target->radius_x = src->radius_x;
+    target->radius_y = src->radius_y;
+    target->rotation_angle = src->rotation_angle;
+    target->force = src->force;
+    target->type = src->type;
+  }
+};
+
+///
+// Class representing a touch point.
+///
+typedef CefStructBase<CefTouchPointTraits> CefTouchPoint;
+
+struct CefTouchEventTraits {
+  typedef cef_touch_event_t struct_type;
+
+  static inline void init(struct_type* s) {}
+
+  static inline void clear(struct_type* s) {}
+
+  static inline void set(const struct_type* src, struct_type* target,
+    bool copy) {
+    target->count = src->count;
+    target->modifiers = src->modifiers;
+    target->timestamp_seconds = src->timestamp_seconds;
+    for (uint32 cpt = 0; cpt < src->count; ++cpt)
+      target->points[cpt] = src->points[cpt];
+  }
+};
+
+///
+// Class representing a touch event.
+///
+typedef CefStructBase<CefTouchEventTraits> CefTouchEvent;
 
 struct CefPopupFeaturesTraits {
   typedef cef_popup_features_t struct_type;
