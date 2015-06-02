@@ -440,7 +440,8 @@ class CefBeginFrameTimer : public cc::TimeSourceClient {
 ui::GestureProvider::Config CreateGestureProviderConfig() {
   ui::GestureProvider::Config config = ui::GetGestureProviderConfig(
       ui::GestureProviderConfigType::CURRENT_PLATFORM);
-  // config.disable_click_delay = true;
+  config.disable_click_delay = true;
+  config.double_tap_support_for_platform_enabled = false;
   return config;
 }
 
