@@ -1,0 +1,84 @@
+diff --git ui/base/touch/touch_device_cornerstone.cc ui/base/touch/touch_device_cornerstone.cc
+new file mode 100644
+index 0000000..1041398
+--- ui/base/touch/touch_device_cornerstone.cc
++++ ui/base/touch/touch_device_cornerstone.cc
+@@ -0,0 +1,33 @@
++// Copyright (c) 2013 The Chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "ui/base/touch/touch_device.h"
++
++namespace ui {
++
++bool IsTouchDevicePresent() {
++  return true;
++}
++
++int MaxTouchPoints() {
++  return 1024;
++}
++
++int GetAvailablePointerTypes() {
++  return POINTER_TYPE_COARSE;
++}
++
++PointerType GetPrimaryPointerType() {
++  return POINTER_TYPE_COARSE;
++}
++
++int GetAvailableHoverTypes() {
++  return HOVER_TYPE_ON_DEMAND;
++}
++
++HoverType GetPrimaryHoverType() {
++  return HOVER_TYPE_ON_DEMAND;
++}
++
++}  // namespace ui
+diff --git ui/base/ui_base.gyp ui/base/ui_base.gyp
+index 29fac97..215e221 100644
+--- ui/base/ui_base.gyp
++++ ui/base/ui_base.gyp
+@@ -270,11 +270,8 @@
+         'theme_provider.h',
+         'touch/selection_bound.cc',
+         'touch/selection_bound.h',
+-        'touch/touch_device.cc',
++        'touch/touch_device_cornerstone.cc',
+         'touch/touch_device.h',
+-        'touch/touch_device_android.cc',
+-        'touch/touch_device_linux.cc',
+-        'touch/touch_device_win.cc',
+         'touch/touch_editing_controller.cc',
+         'touch/touch_editing_controller.h',
+         'touch/touch_enabled.cc',
+@@ -457,19 +454,7 @@
+             'dragdrop/os_exchange_data_provider_aura.h',
+           ],
+         }],
+-        ['OS=="linux"', {
+-          'sources!': [
+-            'touch/touch_device.cc',
+-          ],
+-        }, {
+-          'sources!': [
+-            'touch/touch_device_linux.cc',
+-          ],
+-        }],
+         ['OS=="win"', {
+-          'sources!': [
+-            'touch/touch_device.cc',
+-          ],
+           'include_dirs': [
+             '../..',
+             '../../third_party/wtl/include',
+@@ -573,7 +558,6 @@
+             'models/button_menu_item_model.cc',
+             'models/dialog_model.cc',
+             'theme_provider.cc',
+-            'touch/touch_device.cc',
+             'touch/touch_editing_controller.cc',
+             'ui_base_types.cc',
+           ],
