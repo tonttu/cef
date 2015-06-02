@@ -93,10 +93,11 @@ void ClientAppRenderer::OnUncaughtException(
 
 void ClientAppRenderer::OnFocusedNodeChanged(CefRefPtr<CefBrowser> browser,
                                              CefRefPtr<CefFrame> frame,
-                                             CefRefPtr<CefDOMNode> node) {
+                                             CefRefPtr<CefDOMNode> node,
+                                             const CefRect& nodeBounds) {
   DelegateSet::iterator it = delegates_.begin();
   for (; it != delegates_.end(); ++it)
-    (*it)->OnFocusedNodeChanged(this, browser, frame, node);
+    (*it)->OnFocusedNodeChanged(this, browser, frame, node, nodeBounds);
 }
 
 bool ClientAppRenderer::OnProcessMessageReceived(

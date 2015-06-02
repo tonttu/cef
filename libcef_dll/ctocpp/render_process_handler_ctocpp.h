@@ -48,7 +48,8 @@ class CefRenderProcessHandlerCToCpp
       CefRefPtr<CefV8Exception> exception,
       CefRefPtr<CefV8StackTrace> stackTrace) override;
   void OnFocusedNodeChanged(CefRefPtr<CefBrowser> browser,
-      CefRefPtr<CefFrame> frame, CefRefPtr<CefDOMNode> node) override;
+      CefRefPtr<CefFrame> frame, CefRefPtr<CefDOMNode> node,
+      const CefRect& nodeBounds) override;
   bool OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
       CefProcessId source_process,
       CefRefPtr<CefProcessMessage> message) override;

@@ -66,7 +66,8 @@ class ClientAppRenderer : public ClientApp,
     virtual void OnFocusedNodeChanged(CefRefPtr<ClientAppRenderer> app,
                                       CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefFrame> frame,
-                                      CefRefPtr<CefDOMNode> node) {}
+                                      CefRefPtr<CefDOMNode> node,
+                                      const CefRect& nodeBounds) {}
 
     // Called when a process message is received. Return true if the message was
     // handled and should not be passed on to other handlers. Delegates
@@ -119,7 +120,8 @@ class ClientAppRenderer : public ClientApp,
                            CefRefPtr<CefV8StackTrace> stackTrace) OVERRIDE;
   void OnFocusedNodeChanged(CefRefPtr<CefBrowser> browser,
                             CefRefPtr<CefFrame> frame,
-                            CefRefPtr<CefDOMNode> node) OVERRIDE;
+                            CefRefPtr<CefDOMNode> node,
+                            const CefRect& nodeBounds) OVERRIDE;
   bool OnProcessMessageReceived(
       CefRefPtr<CefBrowser> browser,
       CefProcessId source_process,
