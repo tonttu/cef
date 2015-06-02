@@ -121,6 +121,7 @@ class CefBrowserImpl : public CefBrowser,
   void FrameDetached(blink::WebFrame* frame) override;
   void FocusedNodeChanged(const blink::WebNode& node) override;
   void DraggableRegionsChanged(blink::WebFrame* frame) override;
+  void DidHandleGestureEvent(const blink::WebGestureEvent& event) override;
   bool OnMessageReceived(const IPC::Message& message) override;
 
   // RenderViewObserver::OnMessageReceived message handlers.

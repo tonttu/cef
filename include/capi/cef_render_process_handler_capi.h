@@ -159,6 +159,15 @@ typedef struct _cef_render_process_handler_t {
       struct _cef_domnode_t* node, const cef_rect_t* nodeBounds);
 
   ///
+  // Called when an editable node was touched. Touch location is given as a
+  // parameter.
+  ///
+  void (CEF_CALLBACK *on_editable_node_touched)(
+      struct _cef_render_process_handler_t* self,
+      struct _cef_browser_t* browser, const cef_rect_t* nodeBounds,
+      const cef_point_t* point, float scale);
+
+  ///
   // Called when a new message is received from a different process. Return true
   // (1) if the message was handled or false (0) otherwise. Do not keep a
   // reference to or attempt to access the message outside of this callback.

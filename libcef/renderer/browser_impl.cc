@@ -533,6 +533,32 @@ void CefBrowserImpl::DraggableRegionsChanged(blink::WebFrame* frame) {
   Send(new CefHostMsg_UpdateDraggableRegions(routing_id(), regions));
 }
 
+void CefBrowserImpl::DidHandleGestureEvent(const blink::WebGestureEvent& event) {
+  if (event.type != blink::WebGestureEvent::GestureTap) {
+    return;
+  }
+
+  blink::WebTextInputType type = render_view()->GetWebView()->textInputInfo().type;
+  if (type == blink::WebTextInputTypeNone) {
+    return;
+  }
+
+  CefRefPtr<CefApp> app = CefContentClient::Get()->application();
+  if (app.get()) {
+    CefRefPtr<CefRenderProcessHandler> handler =
+        app->GetRenderProcessHandler();
+    if (handler.get()) {
+      float scale = render_view()->GetWebView()->pageScaleFactor();
+      blink::WebElement e = render_view()->GetMainRenderFrame()->GetWebFrame()->document().focusedElement();
+      blink::WebRect r = e.boundsInViewport();
+
+      CefRect rect(r.x, r.y, r.width, r.height);
+      CefPoint p(event.x, event.y);
+      handler->OnEditableNodeTouched(this, rect, p, scale);
+    }
+  }
+}
+
 bool CefBrowserImpl::OnMessageReceived(const IPC::Message& message) {
   bool handled = true;
   IPC_BEGIN_MESSAGE_MAP(CefBrowserImpl, message)
