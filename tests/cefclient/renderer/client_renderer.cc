@@ -48,7 +48,8 @@ class ClientRenderDelegate : public ClientAppRenderer::Delegate {
   virtual void OnFocusedNodeChanged(CefRefPtr<ClientAppRenderer> app,
                                     CefRefPtr<CefBrowser> browser,
                                     CefRefPtr<CefFrame> frame,
-                                    CefRefPtr<CefDOMNode> node) OVERRIDE {
+                                    CefRefPtr<CefDOMNode> node,
+                                    const CefRect& nodeBounds) OVERRIDE {
     bool is_editable = (node.get() && node->IsEditable());
     if (is_editable != last_node_is_editable_) {
       // Notify the browser of the change in focused element type.

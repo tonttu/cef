@@ -150,7 +150,8 @@ class CefRenderProcessHandler : public virtual CefBase {
   /*--cef(optional_param=frame,optional_param=node)--*/
   virtual void OnFocusedNodeChanged(CefRefPtr<CefBrowser> browser,
                                     CefRefPtr<CefFrame> frame,
-                                    CefRefPtr<CefDOMNode> node) {}
+                                    CefRefPtr<CefDOMNode> node,
+                                    const CefRect& nodeBounds) {}
 
   ///
   // Called when a new message is received from a different process. Return true

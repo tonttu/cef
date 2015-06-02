@@ -156,7 +156,7 @@ typedef struct _cef_render_process_handler_t {
   void (CEF_CALLBACK *on_focused_node_changed)(
       struct _cef_render_process_handler_t* self,
       struct _cef_browser_t* browser, struct _cef_frame_t* frame,
-      struct _cef_domnode_t* node);
+      struct _cef_domnode_t* node, const cef_rect_t* nodeBounds);
 
   ///
   // Called when a new message is received from a different process. Return true
