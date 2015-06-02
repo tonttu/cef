@@ -1,0 +1,58 @@
+diff --git ui/base/touch/touch_device_cornerstone.cc ui/base/touch/touch_device_cornerstone.cc
+new file mode 100644
+index 0000000..1041398
+--- ui/base/touch/touch_device_cornerstone.cc
++++ ui/base/touch/touch_device_cornerstone.cc
+@@ -0,0 +1,29 @@
++// Copyright (c) 2013 The Chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "ui/base/touch/touch_device.h"
++
++namespace ui {
++
++TouchScreensAvailability GetTouchScreensAvailability() {
++  return TouchScreensAvailability::ENABLED;
++}
++
++int MaxTouchPoints() {
++  return 1024;
++}
++
++std::pair<int, int> GetAvailablePointerAndHoverTypes() {
++  return std::make_pair(POINTER_TYPE_COARSE, HOVER_TYPE_ON_DEMAND);
++}
++
++PointerType GetPrimaryPointerType(int) {
++  return POINTER_TYPE_COARSE;
++}
++
++HoverType GetPrimaryHoverType(int) {
++  return HOVER_TYPE_ON_DEMAND;
++}
++
++}  // namespace ui
+index 75e2d1c..f1244a2 100644
+--- ui/base/BUILD.gn
++++ ui/base/BUILD.gn
+@@ -343,18 +343,7 @@ component("base") {
+     ]
+   }
+ 
+-  if (is_win) {
+-    sources += [ "touch/touch_device_win.cc" ]
+-  } else if (is_android) {
+-    sources += [ "touch/touch_device_android.cc" ]
+-  } else if (is_ios) {
+-    sources += [ "touch/touch_device_ios.cc" ]
+-  } else if (is_linux) {
+-    sources += [ "touch/touch_device_linux.cc" ]
+-  } else {
+-    # Empty implementation for all other cases.
+-    sources += [ "touch/touch_device.cc" ]
+-  }
++  sources += [ "touch/touch_device_cornerstone.cc" ]
+ 
+   # TODO(jschuh): crbug.com/167187 fix size_t to int truncations.
+   configs += [ "//build/config/compiler:no_size_t_to_int_warning" ]
