@@ -154,6 +154,15 @@ class CefRenderProcessHandler : public virtual CefBase {
                                     const CefRect& nodeBounds) {}
 
   ///
+  // Called when an editable node was touched. Touch location is given as a
+  // parameter.
+  ///
+  /*--cef()--*/
+  virtual void OnEditableNodeTouched(CefRefPtr<CefBrowser> browser,
+                                     int x,
+                                     int y) {}
+
+  ///
   // Called when a new message is received from a different process. Return true
   // if the message was handled or false otherwise. Do not keep a reference to
   // or attempt to access the message outside of this callback.

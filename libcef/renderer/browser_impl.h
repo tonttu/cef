@@ -119,6 +119,7 @@ class CefBrowserImpl : public CefBrowser,
                                 bool is_new_navigation) override;
   void FrameDetached(blink::WebFrame* frame) override;
   void FocusedNodeChanged(const blink::WebNode& node) override;
+  void DidHandleGestureEvent(const blink::WebGestureEvent& event) override;
   bool OnMessageReceived(const IPC::Message& message) override;
 
   // RenderViewObserver::OnMessageReceived message handlers.

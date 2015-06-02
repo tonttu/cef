@@ -266,6 +266,26 @@ void CEF_CALLBACK render_process_handler_on_focused_node_changed(
       nodeBoundsVal);
 }
 
+void CEF_CALLBACK render_process_handler_on_editable_node_touched(
+    struct _cef_render_process_handler_t* self, cef_browser_t* browser, int x,
+    int y) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  DCHECK(self);
+  if (!self)
+    return;
+  // Verify param: browser; type: refptr_diff
+  DCHECK(browser);
+  if (!browser)
+    return;
+
+  // Execute
+  CefRenderProcessHandlerCppToC::Get(self)->OnEditableNodeTouched(
+      CefBrowserCToCpp::Wrap(browser),
+      x,
+      y);
+}
+
 int CEF_CALLBACK render_process_handler_on_process_message_received(
     struct _cef_render_process_handler_t* self, cef_browser_t* browser,
     cef_process_id_t source_process, cef_process_message_t* message) {
@@ -316,6 +336,8 @@ CefRenderProcessHandlerCppToC::CefRenderProcessHandlerCppToC() {
       render_process_handler_on_uncaught_exception;
   GetStruct()->on_focused_node_changed =
       render_process_handler_on_focused_node_changed;
+  GetStruct()->on_editable_node_touched =
+      render_process_handler_on_editable_node_touched;
   GetStruct()->on_process_message_received =
       render_process_handler_on_process_message_received;
 }

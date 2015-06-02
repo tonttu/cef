@@ -260,6 +260,26 @@ void CefRenderProcessHandlerCToCpp::OnFocusedNodeChanged(
       &nodeBounds);
 }
 
+void CefRenderProcessHandlerCToCpp::OnEditableNodeTouched(
+    CefRefPtr<CefBrowser> browser, int x, int y) {
+  cef_render_process_handler_t* _struct = GetStruct();
+  if (CEF_MEMBER_MISSING(_struct, on_editable_node_touched))
+    return;
+
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: browser; type: refptr_diff
+  DCHECK(browser.get());
+  if (!browser.get())
+    return;
+
+  // Execute
+  _struct->on_editable_node_touched(_struct,
+      CefBrowserCppToC::Wrap(browser),
+      x,
+      y);
+}
+
 bool CefRenderProcessHandlerCToCpp::OnProcessMessageReceived(
     CefRefPtr<CefBrowser> browser, CefProcessId source_process,
     CefRefPtr<CefProcessMessage> message) {

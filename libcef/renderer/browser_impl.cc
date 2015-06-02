@@ -579,6 +579,26 @@ void CefBrowserImpl::FocusedNodeChanged(const blink::WebNode& node) {
   }
 }
 
+void CefBrowserImpl::DidHandleGestureEvent(const blink::WebGestureEvent& event) {
+  if (event.type != blink::WebGestureEvent::GestureTap) {
+    return;
+  }
+
+  blink::WebTextInputType type = render_view()->GetWebView()->textInputInfo().type;
+  if (type == blink::WebTextInputTypeNone) {
+    return;
+  }
+
+  CefRefPtr<CefApp> app = CefContentClient::Get()->application();
+  if (app.get()) {
+    CefRefPtr<CefRenderProcessHandler> handler =
+        app->GetRenderProcessHandler();
+    if (handler.get()) {
+      handler->OnEditableNodeTouched(this, event.x, event.y);
+    }
+  }
+}
+
 bool CefBrowserImpl::OnMessageReceived(const IPC::Message& message) {
   bool handled = true;
   IPC_BEGIN_MESSAGE_MAP(CefBrowserImpl, message)
