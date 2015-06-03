@@ -477,6 +477,7 @@ CefRenderWidgetHostViewOSR::CefRenderWidgetHostViewOSR(
       is_destroyed_(false),
       is_scroll_offset_changed_pending_(false),
       gesture_provider_(CreateGestureProviderConfig(), this),
+      forward_touch_to_popup_(false),
 #if defined(OS_MACOSX)
       text_input_context_osr_mac_(NULL),
 #endif
@@ -1228,6 +1229,47 @@ void CefRenderWidgetHostViewOSR::SendMouseWheelEvent(
 void CefRenderWidgetHostViewOSR::SendTouchEvent(
     const blink::WebTouchEvent& event) {
   TRACE_EVENT0("libcef", "CefRenderWidgetHostViewOSR::SendTouchEvent");
+
+  if (!IsPopupWidget() && popup_host_view_) {
+    if (forward_touch_to_popup_) {
+      for (unsigned i = 0; i < event.touchesLength; ++i) {
+        if (event.touches[i].state == blink::WebTouchPoint::StatePressed &&
+            !popup_host_view_->popup_position_.Contains(event.touches[i].position.x,
+                                                        event.touches[i].position.y)) {
+          // Starting new touch outside the popup widget
+          forward_touch_to_popup_ = false;
+          CEF_POST_TASK(CEF_UIT,
+              base::Bind(&CefRenderWidgetHostViewOSR::CancelPopupWidget,
+                         popup_host_view_->weak_ptr_factory_.GetWeakPtr()));
+          break;
+        }
+      }
+    } else if (!forward_touch_to_popup_ &&
+        event.touchesLength == 1 &&
+        event.touches[0].state == blink::WebTouchPoint::StatePressed &&
+        popup_host_view_->popup_position_.Contains(event.touches[0].position.x,
+                                                   event.touches[0].position.y)) {
+      forward_touch_to_popup_ = true;
+    }
+
+    if (forward_touch_to_popup_) {
+      blink::WebTouchEvent popup_event(event);
+
+      for (unsigned i = 0; i < popup_event.touchesLength; ++i) {
+        popup_event.touches[i].position.x -= popup_host_view_->popup_position_.x();
+        popup_event.touches[i].position.y -= popup_host_view_->popup_position_.y();
+      }
+      popup_host_view_->SendTouchEvent(popup_event);
+
+      if (event.touchesLength == 1 &&
+          (event.touches[0].state == blink::WebTouchPoint::StateReleased ||
+           event.touches[0].state == blink::WebTouchPoint::StateCancelled)) {
+        forward_touch_to_popup_ = false;
+      }
+
+      return;
+    }
+  }
 
   content::MotionEventWeb touch_event(event);
   ui::FilteredGestureProvider::TouchHandlingResult result =

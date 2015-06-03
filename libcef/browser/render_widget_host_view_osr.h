@@ -374,6 +374,8 @@ class CefRenderWidgetHostViewOSR
   // ui::GestureProviderClient implementation.
   ui::FilteredGestureProvider gesture_provider_;
 
+  bool forward_touch_to_popup_;
+
 #if defined(OS_MACOSX)
   NSTextInputContext* text_input_context_osr_mac_;
 #endif
