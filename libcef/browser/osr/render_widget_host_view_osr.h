@@ -359,6 +359,8 @@ class CefRenderWidgetHostViewOSR
   gfx::Vector2dF last_scroll_offset_;
   bool is_scroll_offset_changed_pending_;
 
+  bool forward_touch_to_popup_;
+
   base::WeakPtrFactory<CefRenderWidgetHostViewOSR> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(CefRenderWidgetHostViewOSR);
