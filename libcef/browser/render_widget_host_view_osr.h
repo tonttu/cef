@@ -17,6 +17,7 @@
 #include "content/browser/compositor/delegated_frame_host.h"
 #include "content/browser/renderer_host/render_widget_host_view_base.h"
 #include "ui/compositor/compositor.h"
+#include "ui/events/gesture_detection/filtered_gesture_provider.h"
 
 #if defined(OS_MACOSX)
 #include "content/browser/compositor/browser_compositor_view_mac.h"
@@ -77,6 +78,7 @@ class CefRenderWidgetHostViewOSR
       public ui::AcceleratedWidgetMacNSView,
 #endif
       public ui::CompositorDelegate,
+      public ui::GestureProviderClient,
       public content::DelegatedFrameHostClient {
  public:
   CefRenderWidgetHostViewOSR(content::RenderWidgetHost* widget,
@@ -207,6 +209,11 @@ class CefRenderWidgetHostViewOSR
   scoped_ptr<cc::SoftwareOutputDevice> CreateSoftwareOutputDevice(
       ui::Compositor* compositor) override;
 
+  // ui::GestureProviderClient implementation.
+  void ProcessAckedTouchEvent(const content::TouchEventWithLatencyInfo& touch,
+                              content::InputEventAckState ack_result) override;
+  void OnGestureEvent(const ui::GestureEventData& gesture) override;
+
   // DelegatedFrameHostClient implementation.
   ui::Layer* DelegatedFrameHostGetLayer() const override;
   bool DelegatedFrameHostIsVisible() const override;
@@ -234,6 +241,7 @@ class CefRenderWidgetHostViewOSR
   void SendKeyEvent(const content::NativeWebKeyboardEvent& event);
   void SendMouseEvent(const blink::WebMouseEvent& event);
   void SendMouseWheelEvent(const blink::WebMouseWheelEvent& event);
+  void SendTouchEvent(const blink::WebTouchEvent& event);
   void SendFocusEvent(bool focus);
   void UpdateFrameRate();
 
@@ -373,6 +381,11 @@ class CefRenderWidgetHostViewOSR
   // The last scroll offset of the view.
   gfx::Vector2dF last_scroll_offset_;
   bool is_scroll_offset_changed_pending_;
+
+  // ui::GestureProviderClient implementation.
+  ui::FilteredGestureProvider gesture_provider_;
+
+  bool forward_touch_to_popup_;
 
 #if defined(OS_MACOSX)
   NSTextInputContext* text_input_context_osr_mac_;

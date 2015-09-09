@@ -239,7 +239,7 @@ void CefRenderProcessHandlerCToCpp::OnUncaughtException(
 
 void CefRenderProcessHandlerCToCpp::OnFocusedNodeChanged(
     CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,
-    CefRefPtr<CefDOMNode> node) {
+    CefRefPtr<CefDOMNode> node, const CefRect& nodeBounds) {
   cef_render_process_handler_t* _struct = GetStruct();
   if (CEF_MEMBER_MISSING(_struct, on_focused_node_changed))
     return;
@@ -256,7 +256,28 @@ void CefRenderProcessHandlerCToCpp::OnFocusedNodeChanged(
   _struct->on_focused_node_changed(_struct,
       CefBrowserCppToC::Wrap(browser),
       CefFrameCppToC::Wrap(frame),
-      CefDOMNodeCppToC::Wrap(node));
+      CefDOMNodeCppToC::Wrap(node),
+      &nodeBounds);
+}
+
+void CefRenderProcessHandlerCToCpp::OnEditableNodeTouched(
+    CefRefPtr<CefBrowser> browser, int x, int y) {
+  cef_render_process_handler_t* _struct = GetStruct();
+  if (CEF_MEMBER_MISSING(_struct, on_editable_node_touched))
+    return;
+
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: browser; type: refptr_diff
+  DCHECK(browser.get());
+  if (!browser.get())
+    return;
+
+  // Execute
+  _struct->on_editable_node_touched(_struct,
+      CefBrowserCppToC::Wrap(browser),
+      x,
+      y);
 }
 
 bool CefRenderProcessHandlerCToCpp::OnProcessMessageReceived(

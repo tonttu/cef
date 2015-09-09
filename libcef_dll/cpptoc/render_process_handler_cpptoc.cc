@@ -239,7 +239,7 @@ void CEF_CALLBACK render_process_handler_on_uncaught_exception(
 
 void CEF_CALLBACK render_process_handler_on_focused_node_changed(
     struct _cef_render_process_handler_t* self, cef_browser_t* browser,
-    cef_frame_t* frame, cef_domnode_t* node) {
+    cef_frame_t* frame, cef_domnode_t* node, const cef_rect_t* nodeBounds) {
   // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
 
   DCHECK(self);
@@ -249,13 +249,41 @@ void CEF_CALLBACK render_process_handler_on_focused_node_changed(
   DCHECK(browser);
   if (!browser)
     return;
+  // Verify param: nodeBounds; type: simple_byref_const
+  DCHECK(nodeBounds);
+  if (!nodeBounds)
+    return;
   // Unverified params: frame, node
+
+  // Translate param: nodeBounds; type: simple_byref_const
+  CefRect nodeBoundsVal = nodeBounds?*nodeBounds:CefRect();
 
   // Execute
   CefRenderProcessHandlerCppToC::Get(self)->OnFocusedNodeChanged(
       CefBrowserCToCpp::Wrap(browser),
       CefFrameCToCpp::Wrap(frame),
-      CefDOMNodeCToCpp::Wrap(node));
+      CefDOMNodeCToCpp::Wrap(node),
+      nodeBoundsVal);
+}
+
+void CEF_CALLBACK render_process_handler_on_editable_node_touched(
+    struct _cef_render_process_handler_t* self, cef_browser_t* browser, int x,
+    int y) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  DCHECK(self);
+  if (!self)
+    return;
+  // Verify param: browser; type: refptr_diff
+  DCHECK(browser);
+  if (!browser)
+    return;
+
+  // Execute
+  CefRenderProcessHandlerCppToC::Get(self)->OnEditableNodeTouched(
+      CefBrowserCToCpp::Wrap(browser),
+      x,
+      y);
 }
 
 int CEF_CALLBACK render_process_handler_on_process_message_received(
@@ -308,6 +336,8 @@ CefRenderProcessHandlerCppToC::CefRenderProcessHandlerCppToC() {
       render_process_handler_on_uncaught_exception;
   GetStruct()->on_focused_node_changed =
       render_process_handler_on_focused_node_changed;
+  GetStruct()->on_editable_node_touched =
+      render_process_handler_on_editable_node_touched;
   GetStruct()->on_process_message_received =
       render_process_handler_on_process_message_received;
 }

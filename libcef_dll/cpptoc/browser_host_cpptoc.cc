@@ -670,6 +670,28 @@ void CEF_CALLBACK browser_host_send_mouse_wheel_event(
       deltaY);
 }
 
+void CEF_CALLBACK browser_host_send_touch_event(
+    struct _cef_browser_host_t* self, const struct _cef_touch_event_t* event) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  DCHECK(self);
+  if (!self)
+    return;
+  // Verify param: event; type: struct_byref_const
+  DCHECK(event);
+  if (!event)
+    return;
+
+  // Translate param: event; type: struct_byref_const
+  CefTouchEvent eventObj;
+  if (event)
+    eventObj.Set(*event, false);
+
+  // Execute
+  CefBrowserHostCppToC::Get(self)->SendTouchEvent(
+      eventObj);
+}
+
 void CEF_CALLBACK browser_host_send_focus_event(
     struct _cef_browser_host_t* self, int setFocus) {
   // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
@@ -935,6 +957,7 @@ CefBrowserHostCppToC::CefBrowserHostCppToC() {
   GetStruct()->send_mouse_click_event = browser_host_send_mouse_click_event;
   GetStruct()->send_mouse_move_event = browser_host_send_mouse_move_event;
   GetStruct()->send_mouse_wheel_event = browser_host_send_mouse_wheel_event;
+  GetStruct()->send_touch_event = browser_host_send_touch_event;
   GetStruct()->send_focus_event = browser_host_send_focus_event;
   GetStruct()->send_capture_lost_event = browser_host_send_capture_lost_event;
   GetStruct()->notify_move_or_resize_started =

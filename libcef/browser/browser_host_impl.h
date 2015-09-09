@@ -47,6 +47,7 @@ namespace blink {
 class WebMouseEvent;
 class WebMouseWheelEvent;
 class WebInputEvent;
+class WebTouchEvent;
 }
 
 namespace net {
@@ -193,6 +194,7 @@ class CefBrowserHostImpl : public CefBrowserHost,
                           bool mouseLeave) override;
   void SendMouseWheelEvent(const CefMouseEvent& event,
                            int deltaX, int deltaY) override;
+  void SendTouchEvent(const CefTouchEvent& event) override;
   void SendFocusEvent(bool setFocus) override;
   void SendCaptureLostEvent() override;
   void NotifyMoveOrResizeStarted() override;
@@ -577,6 +579,8 @@ class CefBrowserHostImpl : public CefBrowserHost,
                                    int deltaX, int deltaY);
   void PlatformTranslateMouseEvent(blink::WebMouseEvent& web_event,
                                    const CefMouseEvent& mouse_event);
+  void PlatformTranslateTouchEvent(blink::WebTouchEvent& web_event,
+                                   const CefTouchEvent& touch_event);
 
   void PlatformNotifyMoveOrResizeStarted();
 

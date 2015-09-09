@@ -554,16 +554,24 @@ void CefBrowserImpl::FocusedNodeChanged(const blink::WebNode& node) {
         app->GetRenderProcessHandler();
     if (handler.get()) {
       if (node.isNull()) {
-        handler->OnFocusedNodeChanged(this, GetFocusedFrame(), NULL);
+        handler->OnFocusedNodeChanged(this, GetFocusedFrame(), NULL, CefRect());
       } else {
         const blink::WebDocument& document = node.document();
         if (!document.isNull()) {
+          CefRect rect;
+          if (node.isElementNode()) {
+            blink::WebElement e = node.toConst<blink::WebElement>();
+            const blink::WebRect bounds = e.boundsInViewportSpace();
+            rect.Set(bounds.x, bounds.y, bounds.width, bounds.height);
+          }
+
           blink::WebFrame* frame = document.frame();
           CefRefPtr<CefDOMDocumentImpl> documentImpl =
               new CefDOMDocumentImpl(this, frame);
           handler->OnFocusedNodeChanged(this,
               GetWebFrameImpl(frame).get(),
-              documentImpl->GetOrCreateNode(node));
+              documentImpl->GetOrCreateNode(node),
+              rect);
           documentImpl->Detach();
         }
       }
@@ -582,6 +590,26 @@ void CefBrowserImpl::DraggableRegionsChanged(blink::WebFrame* frame) {
     regions.push_back(region);
   }
   Send(new CefHostMsg_UpdateDraggableRegions(routing_id(), regions));
+}
+
+void CefBrowserImpl::DidHandleGestureEvent(const blink::WebGestureEvent& event) {
+  if (event.type != blink::WebGestureEvent::GestureTap) {
+    return;
+  }
+
+  blink::WebTextInputType type = render_view()->GetWebView()->textInputInfo().type;
+  if (type == blink::WebTextInputTypeNone) {
+    return;
+  }
+
+  CefRefPtr<CefApp> app = CefContentClient::Get()->application();
+  if (app.get()) {
+    CefRefPtr<CefRenderProcessHandler> handler =
+        app->GetRenderProcessHandler();
+    if (handler.get()) {
+      handler->OnEditableNodeTouched(this, event.x, event.y);
+    }
+  }
 }
 
 bool CefBrowserImpl::OnMessageReceived(const IPC::Message& message) {

@@ -56,6 +56,8 @@
 #endif
 
 #if defined(OS_MACOSX)
+#include <dlfcn.h>
+
 #include "libcef/common/util_mac.h"
 #include "base/mac/os_crash_dumps.h"
 #include "base/mac/bundle_locations.h"
@@ -81,6 +83,11 @@ base::LazyInstance<CefCrashReporterClient>::Leaky g_crash_reporter_client =
 #if defined(OS_MACOSX)
 
 base::FilePath GetFrameworksPath() {
+  Dl_info dl_info;
+  if (dladdr((void*)GetFrameworksPath, &dl_info)) {
+    return base::FilePath(dl_info.dli_fname).DirName().DirName();
+  }
+
   // Start out with the path to the running executable.
   base::FilePath execPath;
   PathService::Get(base::FILE_EXE, &execPath);

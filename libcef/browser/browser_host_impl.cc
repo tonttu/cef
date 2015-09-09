@@ -1251,6 +1251,109 @@ void CefBrowserHostImpl::SendMouseWheelEvent(const CefMouseEvent& event,
   }
 }
 
+void CefBrowserHostImpl::PlatformTranslateTouchEvent(blink::WebTouchEvent& result,
+                                 const CefTouchEvent& touch_event) {
+  // note, we are using this data to drive ui:MotionEvents
+  result.cancelable = true;
+  result.uniqueTouchEventId = 0;
+  result.touchesLength = touch_event.count;
+  result.causesScrollingIfUncanceled = true;
+
+  // modifiers
+  result.modifiers |= TranslateModifiers(touch_event.modifiers);
+
+  // timestamp
+  result.timeStampSeconds = touch_event.timestamp_seconds;
+
+  // convert touch points
+  bool touch_start = false;
+  bool touch_moved = false;
+  bool touch_end = false;
+  bool touch_cancel = false;
+  for (size_t i=0; i<touch_event.count; ++i) {
+    // set point state
+    switch (touch_event.points[i].type) {
+      case TPT_UNDEFINED:
+        result.touches[i].state = blink::WebTouchPoint::StateUndefined;
+        break;
+      case TPT_RELEASED:
+        touch_end = true;
+        result.touches[i].state = blink::WebTouchPoint::StateReleased;
+        break;
+      case TPT_PRESSED:
+        touch_start = true;
+        result.touches[i].state = blink::WebTouchPoint::StatePressed;
+        break;
+      case TPT_MOVED:
+        touch_moved = true;
+        result.touches[i].state = blink::WebTouchPoint::StateMoved;
+        break;
+      case TPT_STATIONARY:
+        result.touches[i].state = blink::WebTouchPoint::StateStationary;
+        break;
+      case TPT_CANCELLED:
+        touch_cancel = true;
+        result.touches[i].state = blink::WebTouchPoint::StateCancelled;
+        break;
+    }
+
+    // id
+    result.touches[i].id = touch_event.points[i].id;
+
+    // local coords
+    result.touches[i].position.x = touch_event.points[i].x;
+    result.touches[i].position.y = touch_event.points[i].y;
+
+    // screen coords
+    result.touches[i].screenPosition.x = touch_event.points[i].screen_x;
+    result.touches[i].screenPosition.y = touch_event.points[i].screen_y;
+
+    // radius
+    result.touches[i].radiusX = touch_event.points[i].radius_x;
+    result.touches[i].radiusY = touch_event.points[i].radius_y;
+
+    // force & angle
+    result.touches[i].force = touch_event.points[i].force;
+    result.touches[i].rotationAngle = touch_event.points[i].rotation_angle;
+  }
+
+  // set event type
+  if (touch_cancel) {
+    result.type = blink::WebInputEvent::TouchCancel;
+  } else if (touch_start) {
+    result.type = blink::WebInputEvent::TouchStart;
+  } else if (touch_end) {
+    result.type = blink::WebInputEvent::TouchEnd;
+  } else if (touch_moved) {
+    result.type = blink::WebInputEvent::TouchMove;
+  }
+
+}
+
+void CefBrowserHostImpl::SendTouchEvent(const CefTouchEvent& event) {
+  if (!CEF_CURRENTLY_ON_UIT()) {
+    CEF_POST_TASK(CEF_UIT,
+      base::Bind(&CefBrowserHostImpl::SendTouchEvent, this, event));
+    return;
+  }
+
+  blink::WebTouchEvent web_event;
+  PlatformTranslateTouchEvent(web_event, event);
+
+  if (!IsWindowless()) {
+    // there is no API exposed to support this
+  } else {
+    if (!web_contents())
+      return;
+
+    CefRenderWidgetHostViewOSR* view =
+        static_cast<CefRenderWidgetHostViewOSR*>(
+            web_contents()->GetRenderViewHost()->GetView());
+    if (view)
+      view->SendTouchEvent(web_event);
+  }
+}
+
 int CefBrowserHostImpl::TranslateModifiers(uint32 cef_modifiers) {
   int webkit_modifiers = 0;
   // Set modifiers based on key state.

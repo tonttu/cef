@@ -272,13 +272,13 @@ if(OS_LINUX)
   set(CEF_BINARY_DIR_RELEASE  "${CMAKE_CURRENT_SOURCE_DIR}/Release")
 
   # CEF library paths.
-  set(CEF_LIB_DEBUG   "${CEF_BINARY_DIR_DEBUG}/libcef.so")
-  set(CEF_LIB_RELEASE "${CEF_BINARY_DIR_RELEASE}/libcef.so")
+  set(CEF_LIB_DEBUG   "${CEF_BINARY_DIR_DEBUG}/libcef-$ENV{CEF_SHORT_VERSION}.so")
+  set(CEF_LIB_RELEASE "${CEF_BINARY_DIR_RELEASE}/libcef-$ENV{CEF_SHORT_VERSION}.so")
 
   # List of CEF binary files.
   set(CEF_BINARY_FILES
     chrome-sandbox
-    libcef.so
+    libcef-$ENV{CEF_SHORT_VERSION}.so
     natives_blob.bin
     snapshot_blob.bin
     )
