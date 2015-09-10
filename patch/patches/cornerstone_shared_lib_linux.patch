@@ -62,69 +62,71 @@ index ef002ae..87e151b 100644
  };
  
 diff --git base/i18n/icu_util.cc base/i18n/icu_util.cc
-index 8bbbc04..345fc94 100644
+index 1dd54cd..7fbe300 100644
 --- base/i18n/icu_util.cc
 +++ base/i18n/icu_util.cc
-@@ -11,6 +11,7 @@
- #include <string>
+@@ -12,6 +12,7 @@
  
+ #include "base/debug/alias.h"
  #include "base/files/file_path.h"
 +#include "base/files/file_util.h"
  #include "base/files/memory_mapped_file.h"
  #include "base/logging.h"
  #include "base/path_service.h"
-@@ -151,6 +152,14 @@ bool InitializeICU() {
-       return false;
-     }
- #endif  // OS check
-+
-+#if defined(OS_POSIX)
-+    if (!base::PathExists(data_path)) {
-+      PathService::Get(base::DIR_SHARED_LIB, &data_path);
-+      data_path = data_path.AppendASCII(kIcuDataFileName);
-+    }
-+#endif
-+
-     if (!mapped_file.Initialize(data_path)) {
-       LOG(ERROR) << "Couldn't mmap " << data_path.AsUTF8Unsafe();
-       return false;
-diff --git gin/v8_initializer.cc gin/v8_initializer.cc
-index 67b5f88..055d862 100644
---- gin/v8_initializer.cc
-+++ gin/v8_initializer.cc
-@@ -33,7 +33,7 @@ const int kV8SnapshotBasePathKey =
- #if defined(OS_ANDROID)
-     base::DIR_ANDROID_APP_DATA;
- #elif defined(OS_POSIX)
--    base::DIR_EXE;
-+    base::DIR_SHARED_LIB;
- #elif defined(OS_WIN)
-     base::DIR_MODULE;
- #endif  // OS_ANDROID
-diff --git media/base/media_posix.cc media/base/media_posix.cc
-index f8f0c99..522c9b4 100644
---- media/base/media_posix.cc
-+++ media/base/media_posix.cc
-@@ -8,6 +8,7 @@
+@@ -111,6 +112,11 @@ void LazyInitIcuDataFile() {
+   DCHECK(path_ok);
+   data_path = data_path.AppendASCII(kIcuDataFileName);
  
- #include "base/files/file_path.h"
- #include "base/logging.h"
-+#include "base/path_service.h"
- #include "base/strings/stringize_macros.h"
- #include "media/ffmpeg/ffmpeg_common.h"
- #include "third_party/ffmpeg/ffmpeg_stubs.h"
-@@ -51,6 +52,11 @@ bool InitializeMediaLibraryInternal(const base::FilePath& module_dir) {
-   DCHECK_EQ(kNumStubModules, 1);
-   paths[kModuleFfmpegsumo].push_back(module_dir.Append(kSumoLib).value());
- 
-+  base::FilePath lib_dir;
-+  if (PathService::Get(base::DIR_SHARED_LIB, &lib_dir)) {
-+    paths[kModuleFfmpegsumo].push_back(lib_dir.Append(kSumoLib).value());
++  if (!base::PathExists(data_path)) {
++    PathService::Get(base::DIR_SHARED_LIB, &data_path);
++    data_path = data_path.AppendASCII(kIcuDataFileName);
 +  }
 +
-   // If that fails, see if any system libraries are available.
-   paths[kModuleFfmpegsumo].push_back(module_dir.Append(
-       FILE_PATH_LITERAL(DSO_NAME("avutil", AVUTIL_VERSION))).value());
+ #if defined(OS_WIN)
+   // TODO(scottmg): http://crbug.com/445616
+   wchar_t tmp_buffer2[_MAX_PATH] = {0};
+@@ -124,8 +130,13 @@ void LazyInitIcuDataFile() {
+       SysUTF8ToCFStringRef(kIcuDataFileName));
+   FilePath data_path = mac::PathForFrameworkBundleResource(data_file_name);
+   if (data_path.empty()) {
+-    LOG(ERROR) << kIcuDataFileName << " not found in bundle";
+-    return;
++    PathService::Get(base::DIR_SHARED_LIB, &data_path);
++    data_path = data_path.AppendASCII(kIcuDataFileName);
++
++    if (!base::PathExists(data_path)) {
++      LOG(ERROR) << kIcuDataFileName << " not found in bundle";
++      return;
++    }
+   }
+ #endif  // !defined(OS_MACOSX)
+   File file(data_path, File::FLAG_OPEN | File::FLAG_READ);
+diff --git chrome/common/chrome_paths.cc chrome/common/chrome_paths.cc
+index 3cf2c04..17e0ef5 100644
+--- chrome/common/chrome_paths.cc
++++ chrome/common/chrome_paths.cc
+@@ -80,7 +80,7 @@ bool GetInternalPluginsDirectory(base::FilePath* result) {
+ #endif
+ 
+   // The rest of the world expects plugins in the module directory.
+-  return PathService::Get(base::DIR_MODULE, result);
++  return PathService::Get(base::DIR_SHARED_LIB, result);
+ }
+ 
+ #if defined(OS_WIN)
+diff --git gin/v8_initializer.cc gin/v8_initializer.cc
+index a82209f..2cc1f63 100644
+--- gin/v8_initializer.cc
++++ gin/v8_initializer.cc
+@@ -63,7 +63,7 @@ void GetV8FilePath(const char* file_name, base::FilePath* path_out) {
+   // This is the path within the .apk.
+   data_path = base::FilePath(FILE_PATH_LITERAL("assets"));
+ #elif defined(OS_POSIX)
+-  PathService::Get(base::DIR_EXE, &data_path);
++  PathService::Get(base::DIR_SHARED_LIB, &data_path);
+ #elif defined(OS_WIN)
+   PathService::Get(base::DIR_MODULE, &data_path);
+ #endif
 diff --git sandbox/linux/suid/client/setuid_sandbox_host.cc sandbox/linux/suid/client/setuid_sandbox_host.cc
 index 71171eb..37fba40 100644
 --- sandbox/linux/suid/client/setuid_sandbox_host.cc
@@ -143,16 +145,16 @@ index 71171eb..37fba40 100644
    // In user-managed builds, including development builds, an environment
    // variable is required to enable the sandbox. See
    // http://code.google.com/p/chromium/wiki/LinuxSUIDSandboxDevelopment
-diff --git chrome/common/chrome_paths.cc chrome/common/chrome_paths.cc
-index b5fd5b5..67fd59a 100644
---- chrome/common/chrome_paths.cc
-+++ chrome/common/chrome_paths.cc
-@@ -95,7 +95,7 @@ bool GetInternalPluginsDirectory(base::FilePath* result) {
- #endif
+diff --git chrome/browser/media/encrypted_media_browsertest.cc chrome/browser/media/encrypted_media_browsertest.cc
+index 7ac65e7..1030625 100644
+--- chrome/browser/media/encrypted_media_browsertest.cc
++++ chrome/browser/media/encrypted_media_browsertest.cc
+@@ -293,7 +293,7 @@ class EncryptedMediaTestBase : public MediaBrowserTest {
  
-   // The rest of the world expects plugins in the module directory.
--  return PathService::Get(base::DIR_MODULE, result);
-+  return PathService::Get(base::DIR_SHARED_LIB, result);
- }
- 
- #if defined(OS_WIN)
+     // Append the switch to register the Clear Key CDM Adapter.
+     base::FilePath plugin_dir;
+-    EXPECT_TRUE(PathService::Get(base::DIR_MODULE, &plugin_dir));
++    EXPECT_TRUE(PathService::Get(base::DIR_SHARED_LIB, &plugin_dir));
+     base::FilePath plugin_lib = plugin_dir.AppendASCII(adapter_name);
+     EXPECT_TRUE(base::PathExists(plugin_lib)) << plugin_lib.value();
+     base::FilePath::StringType pepper_plugin = plugin_lib.value();

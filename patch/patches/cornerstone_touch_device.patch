@@ -38,10 +38,10 @@ index 0000000..1041398
 +
 +}  // namespace ui
 diff --git ui/base/ui_base.gyp ui/base/ui_base.gyp
-index 29fac97..215e221 100644
+index aa0137e..25b0a979 100644
 --- ui/base/ui_base.gyp
 +++ ui/base/ui_base.gyp
-@@ -270,11 +270,8 @@
+@@ -276,11 +276,8 @@
          'theme_provider.h',
          'touch/selection_bound.cc',
          'touch/selection_bound.h',
@@ -54,7 +54,7 @@ index 29fac97..215e221 100644
          'touch/touch_editing_controller.cc',
          'touch/touch_editing_controller.h',
          'touch/touch_enabled.cc',
-@@ -457,19 +454,7 @@
+@@ -465,19 +462,7 @@
              'dragdrop/os_exchange_data_provider_aura.h',
            ],
          }],
@@ -74,7 +74,7 @@ index 29fac97..215e221 100644
            'include_dirs': [
              '../..',
              '../../third_party/wtl/include',
-@@ -573,7 +558,6 @@
+@@ -581,7 +566,6 @@
              'models/button_menu_item_model.cc',
              'models/dialog_model.cc',
              'theme_provider.cc',

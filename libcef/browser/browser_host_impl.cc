@@ -1251,11 +1251,12 @@ void CefBrowserHostImpl::SendMouseWheelEvent(const CefMouseEvent& event,
   }
 }
 
+static std::atomic<uint32> s_touch_event_id;
 void CefBrowserHostImpl::PlatformTranslateTouchEvent(blink::WebTouchEvent& result,
                                  const CefTouchEvent& touch_event) {
   // note, we are using this data to drive ui:MotionEvents
   result.cancelable = true;
-  result.uniqueTouchEventId = 0;
+  result.uniqueTouchEventId = ++s_touch_event_id;
   result.touchesLength = touch_event.count;
   result.causesScrollingIfUncanceled = true;
 

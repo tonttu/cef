@@ -1053,7 +1053,7 @@ CefRenderWidgetHostViewOSR::CreateSoftwareOutputDevice(
 void CefRenderWidgetHostViewOSR::ProcessAckedTouchEvent(const content::TouchEventWithLatencyInfo& touch,
     content::InputEventAckState ack_result) {
   const bool event_consumed = ack_result ==  content::INPUT_EVENT_ACK_STATE_CONSUMED;
-  gesture_provider_.OnAsyncTouchEventAck(event_consumed);
+  gesture_provider_.OnTouchEventAck(touch.event.uniqueTouchEventId, event_consumed);
 }
 
 void CefRenderWidgetHostViewOSR::OnGestureEvent(
@@ -1269,7 +1269,7 @@ void CefRenderWidgetHostViewOSR::SendTouchEvent(
           // Starting new touch outside the popup widget
           forward_touch_to_popup_ = false;
           CEF_POST_TASK(CEF_UIT,
-              base::Bind(&CefRenderWidgetHostViewOSR::CancelPopupWidget,
+              base::Bind(&CefRenderWidgetHostViewOSR::CancelWidget,
                          popup_host_view_->weak_ptr_factory_.GetWeakPtr()));
           break;
         }
