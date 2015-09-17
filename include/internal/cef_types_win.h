@@ -56,6 +56,8 @@ extern "C" {
 // Structure representing CefExecuteProcess arguments.
 ///
 typedef struct _cef_main_args_t {
+  int argc;
+  char** argv;
   HINSTANCE instance;
 } cef_main_args_t;
 
