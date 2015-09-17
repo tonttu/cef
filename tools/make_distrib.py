@@ -420,7 +420,7 @@ if mode == 'standard':
 if platform == 'windows':
   binaries = [
     'd3dcompiler_47.dll',
-    'libcef.dll',
+    libcef_name+'.dll',
     'libEGL.dll',
     'libGLESv2.dll',
     'natives_blob.bin',
@@ -431,7 +431,7 @@ if platform == 'windows':
     binaries.append('wow_helper.exe')
 
   out_dir = os.path.join(src_dir, 'out')
-  libcef_dll_file = 'libcef.dll.lib'
+  libcef_dll_file = libcef_name+'.dll.lib'
   sandbox_libs = [
     'obj\\base\\base.lib',
     'obj\\base\\base_static.lib',
@@ -456,7 +456,7 @@ if platform == 'windows':
       copy_files(os.path.join(script_dir, 'distrib/win/*.dll'), dst_dir, options.quiet)
       for binary in binaries:
         copy_file(os.path.join(build_dir, binary), os.path.join(dst_dir, binary), options.quiet)
-      copy_file(os.path.join(build_dir, libcef_dll_file), os.path.join(dst_dir, 'libcef.lib'), \
+      copy_file(os.path.join(build_dir, libcef_dll_file), os.path.join(dst_dir, libcef_name+'.lib'), \
                 options.quiet)
       combine_libs(build_dir, sandbox_libs, os.path.join(dst_dir, 'cef_sandbox.lib'));
 
@@ -464,7 +464,7 @@ if platform == 'windows':
         # create the symbol output directory
         symbol_output_dir = create_output_dir(output_dir_name + '_debug_symbols', options.outputdir)
         # transfer contents
-        copy_file(os.path.join(build_dir, 'libcef.dll.pdb'), symbol_output_dir, options.quiet)
+        copy_file(os.path.join(build_dir, libcef_name+'.dll.pdb'), symbol_output_dir, options.quiet)
     else:
       sys.stderr.write("No Debug build files.\n")
 
@@ -479,7 +479,7 @@ if platform == 'windows':
       copy_file(os.path.join(build_dir, binary), os.path.join(dst_dir, binary), options.quiet)
 
     if mode != 'client':
-      copy_file(os.path.join(build_dir, libcef_dll_file), os.path.join(dst_dir, 'libcef.lib'), \
+      copy_file(os.path.join(build_dir, libcef_dll_file), os.path.join(dst_dir, libcef_name+'.lib'), \
           options.quiet)
       combine_libs(build_dir, sandbox_libs, os.path.join(dst_dir, 'cef_sandbox.lib'));
     else:
@@ -489,7 +489,7 @@ if platform == 'windows':
       # create the symbol output directory
       symbol_output_dir = create_output_dir(output_dir_name + '_release_symbols', options.outputdir)
       # transfer contents
-      copy_file(os.path.join(build_dir, 'libcef.dll.pdb'), symbol_output_dir, options.quiet)
+      copy_file(os.path.join(build_dir, libcef_name+'.dll.pdb'), symbol_output_dir, options.quiet)
   else:
     sys.stderr.write("No Release build files.\n")
 

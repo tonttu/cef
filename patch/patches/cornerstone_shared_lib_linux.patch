@@ -73,19 +73,21 @@ index 1dd54cd..7fbe300 100644
  #include "base/files/memory_mapped_file.h"
  #include "base/logging.h"
  #include "base/path_service.h"
-@@ -111,6 +112,11 @@ void LazyInitIcuDataFile() {
+@@ -111,6 +112,13 @@ void LazyInitIcuDataFile() {
    DCHECK(path_ok);
    data_path = data_path.AppendASCII(kIcuDataFileName);
  
++#if !defined(OS_WIN)
 +  if (!base::PathExists(data_path)) {
 +    PathService::Get(base::DIR_SHARED_LIB, &data_path);
 +    data_path = data_path.AppendASCII(kIcuDataFileName);
 +  }
++#endif
 +
  #if defined(OS_WIN)
    // TODO(scottmg): http://crbug.com/445616
    wchar_t tmp_buffer2[_MAX_PATH] = {0};
-@@ -124,8 +130,13 @@ void LazyInitIcuDataFile() {
+@@ -124,8 +132,13 @@ void LazyInitIcuDataFile() {
        SysUTF8ToCFStringRef(kIcuDataFileName));
    FilePath data_path = mac::PathForFrameworkBundleResource(data_file_name);
    if (data_path.empty()) {
