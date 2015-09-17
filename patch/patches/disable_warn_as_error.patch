@@ -1,0 +1,22 @@
+diff --git build/common.gypi build/common.gypi
+index 767fed2..44e2da4 100644
+--- build/common.gypi
++++ build/common.gypi
+@@ -3166,7 +3166,7 @@
+             'msvs_settings': {
+               'VCCLCompilerTool': {
+                 'WarningLevel': '3',
+-                'WarnAsError': 'true',
++                'WarnAsError': 'false',
+                 'Detect64BitPortabilityProblems': 'false',
+               },
+             },
+@@ -5653,7 +5653,7 @@
+             'EnableFunctionLevelLinking': 'true',
+             'RuntimeTypeInfo': 'false',
+             'WarningLevel': '4',
+-            'WarnAsError': 'true',
++            'WarnAsError': 'false',
+             'DebugInformationFormat': '3',
+             # ExceptionHandling must match _HAS_EXCEPTIONS above.
+             'ExceptionHandling': '0',
