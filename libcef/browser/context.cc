@@ -98,7 +98,11 @@ int CefExecuteProcess(const CefMainArgs& args,
 
   base::CommandLine command_line(base::CommandLine::NO_PROGRAM);
 #if defined(OS_WIN)
-  command_line.ParseFromString(::GetCommandLineW());
+  if (args.argv) {
+    command_line.InitFromArgv(args.argc, args.argv);
+  } else {
+    command_line.ParseFromString(::GetCommandLineW());
+  }
 #else
   command_line.InitFromArgv(args.argc, args.argv);
 #endif
@@ -121,6 +125,10 @@ int CefExecuteProcess(const CefMainArgs& args,
 
   CefMainDelegate main_delegate(application);
 
+  content::ContentMainParams params(&main_delegate);
+  params.argc = args.argc;
+  params.argv = const_cast<const char**>(args.argv);
+
   // Execute the secondary process.
 #if defined(OS_WIN)
   sandbox::SandboxInterfaceInfo sandbox_info = {0};
@@ -129,19 +137,12 @@ int CefExecuteProcess(const CefMainArgs& args,
     windows_sandbox_info = &sandbox_info;
   }
 
-  content::ContentMainParams params(&main_delegate);
   params.instance = args.instance;
   params.sandbox_info =
       static_cast<sandbox::SandboxInterfaceInfo*>(windows_sandbox_info);
-
-  return content::ContentMain(params);
-#else
-  content::ContentMainParams params(&main_delegate);
-  params.argc = args.argc;
-  params.argv = const_cast<const char**>(args.argv);
-
-  return content::ContentMain(params);
 #endif
+
+  return content::ContentMain(params);
 }
 
 bool CefInitialize(const CefMainArgs& args,
@@ -300,6 +301,8 @@ bool CefContext::Initialize(const CefMainArgs& args,
 
   int exit_code;
 
+  content::ContentMainParams params(main_delegate_.get());
+
   // Initialize the content runner.
 #if defined(OS_WIN)
   sandbox::SandboxInterfaceInfo sandbox_info = {0};
@@ -309,19 +312,15 @@ bool CefContext::Initialize(const CefMainArgs& args,
     settings_.no_sandbox = true;
   }
 
-  content::ContentMainParams params(main_delegate_.get());
   params.instance = args.instance;
   params.sandbox_info =
       static_cast<sandbox::SandboxInterfaceInfo*>(windows_sandbox_info);
+#endif
 
-  exit_code = main_runner_->Initialize(params);
-#else
-  content::ContentMainParams params(main_delegate_.get());
   params.argc = args.argc;
   params.argv = const_cast<const char**>(args.argv);
 
   exit_code = main_runner_->Initialize(params);
-#endif
 
   DCHECK_LT(exit_code, 0);
   if (exit_code >= 0)

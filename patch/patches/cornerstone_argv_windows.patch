@@ -1,0 +1,104 @@
+diff --git base/command_line.cc base/command_line.cc
+index 99ea2b0..8487764 100644
+--- base/command_line.cc
++++ base/command_line.cc
+@@ -221,7 +221,14 @@ bool CommandLine::Init(int argc, const char* const* argv) {
+ 
+   current_process_commandline_ = new CommandLine(NO_PROGRAM);
+ #if defined(OS_WIN)
+-  current_process_commandline_->ParseFromString(::GetCommandLineW());
++  if (argv) {
++    StringVector new_argv;
++    for (int i = 0; i < argc; ++i)
++      new_argv.push_back(UTF8ToWide(argv[i]));
++    current_process_commandline_->InitFromArgv(new_argv);
++  } else {
++    current_process_commandline_->ParseFromString(::GetCommandLineW());
++  }
+ #elif defined(OS_POSIX)
+   current_process_commandline_->InitFromArgv(argc, argv);
+ #endif
+@@ -254,6 +261,13 @@ CommandLine CommandLine::FromString(const string16& command_line) {
+   cmd.ParseFromString(command_line);
+   return cmd;
+ }
++
++void CommandLine::InitFromArgv(int argc, const char* const* argv) {
++  StringVector new_argv;
++  for (int i = 0; i < argc; ++i)
++    new_argv.push_back(UTF8ToWide(argv[i]));
++  InitFromArgv(new_argv);
++}
+ #endif
+ 
+ void CommandLine::InitFromArgv(int argc,
+diff --git base/command_line.h base/command_line.h
+index 3d29f8f..33f4e65 100644
+--- base/command_line.h
++++ base/command_line.h
+@@ -78,10 +78,8 @@ class BASE_EXPORT CommandLine {
+   static void InitUsingArgvForTesting(int argc, const char* const* argv);
+ #endif
+ 
+-  // Initialize the current process CommandLine singleton. On Windows, ignores
+-  // its arguments (we instead parse GetCommandLineW() directly) because we
+-  // don't trust the CRT's parsing of the command line, but it still must be
+-  // called to set up the command line. Returns false if initialization has
++  // Initialize the current process CommandLine singleton. On Windows, if argv
++  // is null, uses GetCommandLineW() directly. Returns false if initialization has
+   // already occurred, and true otherwise. Only the caller receiving a 'true'
+   // return value should take responsibility for calling Reset.
+   static bool Init(int argc, const char* const* argv);
+@@ -103,6 +101,7 @@ class BASE_EXPORT CommandLine {
+ 
+ #if defined(OS_WIN)
+   static CommandLine FromString(const string16& command_line);
++  void InitFromArgv(int argc, const char* const* argv);
+ #endif
+ 
+   // Initialize from an argv vector.
+diff --git content/app/content_main_runner.cc content/app/content_main_runner.cc
+index a8e8660..06b850b 100644
+--- content/app/content_main_runner.cc
++++ content/app/content_main_runner.cc
+@@ -520,15 +520,13 @@ class ContentMainRunnerImpl : public ContentMainRunner {
+     // On Android, the command line is initialized when library is loaded and
+     // we have already started our TRACE_EVENT0.
+ #if !defined(OS_ANDROID)
+-    // argc/argv are ignored on Windows and Android; see command_line.h for
++    // argc/argv are ignored on Android; see command_line.h for
+     // details.
+     int argc = 0;
+     const char** argv = NULL;
+ 
+-#if !defined(OS_WIN)
+     argc = params.argc;
+     argv = params.argv;
+-#endif
+ 
+     base::CommandLine::Init(argc, argv);
+ 
+diff --git content/public/app/content_main.h content/public/app/content_main.h
+index 201fca7..3bf6901 100644
+--- content/public/app/content_main.h
++++ content/public/app/content_main.h
+@@ -28,7 +28,8 @@ struct ContentMainParams {
+ #if defined(OS_WIN)
+         instance(NULL),
+         sandbox_info(NULL),
+-#elif !defined(OS_ANDROID)
++#endif
++#if !defined(OS_ANDROID)
+         argc(0),
+         argv(NULL),
+ #endif
+@@ -43,7 +44,8 @@ struct ContentMainParams {
+   // |sandbox_info| should be initialized using InitializeSandboxInfo from
+   // content_main_win.h
+   sandbox::SandboxInterfaceInfo* sandbox_info;
+-#elif !defined(OS_ANDROID)
++#endif
++#if !defined(OS_ANDROID)
+   int argc;
+   const char** argv;
+ #endif

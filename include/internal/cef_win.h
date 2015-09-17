@@ -50,6 +50,8 @@ struct CefMainArgsTraits {
 
   static inline void set(const struct_type* src, struct_type* target,
       bool copy) {
+    target->argc = src->argc;
+    target->argv = src->argv;
     target->instance = src->instance;
   }
 };
@@ -62,7 +64,14 @@ class CefMainArgs : public CefStructBase<CefMainArgsTraits> {
   CefMainArgs() : parent() {}
   explicit CefMainArgs(const cef_main_args_t& r) : parent(r) {}
   explicit CefMainArgs(const CefMainArgs& r) : parent(r) {}
+  explicit CefMainArgs(int argc_arg, char** argv_arg, HINSTANCE hInstance) : parent() {
+    argc = argc_arg;
+    argv = argv_arg;
+    instance = hInstance;
+  }
   explicit CefMainArgs(HINSTANCE hInstance) : parent() {
+    argc = 0;
+    argv = 0;
     instance = hInstance;
   }
 };
