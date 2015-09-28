@@ -159,8 +159,9 @@ class CefRenderProcessHandler : public virtual CefBase {
   ///
   /*--cef()--*/
   virtual void OnEditableNodeTouched(CefRefPtr<CefBrowser> browser,
-                                     int x,
-                                     int y) {}
+                                     const CefRect& nodeBounds,
+                                     const CefPoint& point,
+                                     float scale) {}
 
   ///
   // Called when a new message is received from a different process. Return true

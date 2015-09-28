@@ -563,6 +563,16 @@ void CefBrowserImpl::FocusedNodeChanged(const blink::WebNode& node) {
             blink::WebElement e = node.toConst<blink::WebElement>();
             const blink::WebRect bounds = e.boundsInViewportSpace();
             rect.Set(bounds.x, bounds.y, bounds.width, bounds.height);
+
+            content::RenderView* rv = render_view();
+            if (rv) {
+              blink::WebView* webview = rv->GetWebView();
+              if (webview) {
+                float scale = webview->pageScaleFactor();
+                rect.Set(scale * bounds.x, scale * bounds.y,
+                         scale * bounds.width, scale * bounds.height);
+              }
+            }
           }
 
           blink::WebFrame* frame = document.frame();
@@ -607,7 +617,13 @@ void CefBrowserImpl::DidHandleGestureEvent(const blink::WebGestureEvent& event) 
     CefRefPtr<CefRenderProcessHandler> handler =
         app->GetRenderProcessHandler();
     if (handler.get()) {
-      handler->OnEditableNodeTouched(this, event.x, event.y);
+      float scale = render_view()->GetWebView()->pageScaleFactor();
+      blink::WebElement e = render_view()->GetMainRenderFrame()->GetFocusedElement();
+      blink::WebRect r = e.boundsInViewportSpace();
+
+      CefRect rect(r.x, r.y, r.width, r.height);
+      CefPoint p(event.x, event.y);
+      handler->OnEditableNodeTouched(this, rect, p, scale);
     }
   }
 }

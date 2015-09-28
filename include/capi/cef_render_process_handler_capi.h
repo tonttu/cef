@@ -164,7 +164,8 @@ typedef struct _cef_render_process_handler_t {
   ///
   void (CEF_CALLBACK *on_editable_node_touched)(
       struct _cef_render_process_handler_t* self,
-      struct _cef_browser_t* browser, int x, int y);
+      struct _cef_browser_t* browser, const cef_rect_t* nodeBounds,
+      const cef_point_t* point, float scale);
 
   ///
   // Called when a new message is received from a different process. Return true

@@ -261,7 +261,8 @@ void CefRenderProcessHandlerCToCpp::OnFocusedNodeChanged(
 }
 
 void CefRenderProcessHandlerCToCpp::OnEditableNodeTouched(
-    CefRefPtr<CefBrowser> browser, int x, int y) {
+    CefRefPtr<CefBrowser> browser, const CefRect& nodeBounds,
+    const CefPoint& point, float scale) {
   cef_render_process_handler_t* _struct = GetStruct();
   if (CEF_MEMBER_MISSING(_struct, on_editable_node_touched))
     return;
@@ -276,8 +277,9 @@ void CefRenderProcessHandlerCToCpp::OnEditableNodeTouched(
   // Execute
   _struct->on_editable_node_touched(_struct,
       CefBrowserCppToC::Wrap(browser),
-      x,
-      y);
+      &nodeBounds,
+      &point,
+      scale);
 }
 
 bool CefRenderProcessHandlerCToCpp::OnProcessMessageReceived(

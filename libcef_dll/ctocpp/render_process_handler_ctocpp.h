@@ -50,8 +50,8 @@ class CefRenderProcessHandlerCToCpp
   void OnFocusedNodeChanged(CefRefPtr<CefBrowser> browser,
       CefRefPtr<CefFrame> frame, CefRefPtr<CefDOMNode> node,
       const CefRect& nodeBounds) override;
-  void OnEditableNodeTouched(CefRefPtr<CefBrowser> browser, int x,
-      int y) override;
+  void OnEditableNodeTouched(CefRefPtr<CefBrowser> browser,
+      const CefRect& nodeBounds, const CefPoint& point, float scale) override;
   bool OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
       CefProcessId source_process,
       CefRefPtr<CefProcessMessage> message) override;

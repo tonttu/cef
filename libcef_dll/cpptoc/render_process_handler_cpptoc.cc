@@ -267,8 +267,8 @@ void CEF_CALLBACK render_process_handler_on_focused_node_changed(
 }
 
 void CEF_CALLBACK render_process_handler_on_editable_node_touched(
-    struct _cef_render_process_handler_t* self, cef_browser_t* browser, int x,
-    int y) {
+    struct _cef_render_process_handler_t* self, cef_browser_t* browser,
+    const cef_rect_t* nodeBounds, const cef_point_t* point, float scale) {
   // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
 
   DCHECK(self);
@@ -278,12 +278,26 @@ void CEF_CALLBACK render_process_handler_on_editable_node_touched(
   DCHECK(browser);
   if (!browser)
     return;
+  // Verify param: nodeBounds; type: simple_byref_const
+  DCHECK(nodeBounds);
+  if (!nodeBounds)
+    return;
+  // Verify param: point; type: simple_byref_const
+  DCHECK(point);
+  if (!point)
+    return;
+
+  // Translate param: nodeBounds; type: simple_byref_const
+  CefRect nodeBoundsVal = nodeBounds?*nodeBounds:CefRect();
+  // Translate param: point; type: simple_byref_const
+  CefPoint pointVal = point?*point:CefPoint();
 
   // Execute
   CefRenderProcessHandlerCppToC::Get(self)->OnEditableNodeTouched(
       CefBrowserCToCpp::Wrap(browser),
-      x,
-      y);
+      nodeBoundsVal,
+      pointVal,
+      scale);
 }
 
 int CEF_CALLBACK render_process_handler_on_process_message_received(
