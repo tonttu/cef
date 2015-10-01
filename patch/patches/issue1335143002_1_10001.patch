@@ -1,0 +1,15 @@
+Index: components/storage_monitor/image_capture_device_manager.mm
+diff --git components/storage_monitor/image_capture_device_manager.mm components/storage_monitor/image_capture_device_manager.mm
+index ddff960018c941826e36609298acb191e4af93ac..7ad7dbc2a703bb253bf70d14f5bf217bdc3c71d5 100644
+--- components/storage_monitor/image_capture_device_manager.mm
++++ components/storage_monitor/image_capture_device_manager.mm
+@@ -54,7 +54,8 @@ storage_monitor::ImageCaptureDeviceManager* g_image_capture_device_manager =
+     deviceBrowser_.reset([[ICDeviceBrowser alloc] init]);
+     [deviceBrowser_ setDelegate:self];
+     [deviceBrowser_ setBrowsedDeviceTypeMask:
+-        ICDeviceTypeMaskCamera | ICDeviceLocationTypeMaskLocal];
++        static_cast<ICDeviceTypeMask>(
++            ICDeviceTypeMaskCamera | ICDeviceLocationTypeMaskLocal)];
+     [deviceBrowser_ start];
+   }
+   return self;

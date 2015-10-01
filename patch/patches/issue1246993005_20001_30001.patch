@@ -1,0 +1,18 @@
+Index: net/proxy/proxy_resolver_mac.cc
+diff --git net/proxy/proxy_resolver_mac.cc net/proxy/proxy_resolver_mac.cc
+index df438d198283bac837007dce93a669d12b7db087..d4f41191d0ae097ff85d1b511d6c59f73f26b77e 100644
+--- net/proxy/proxy_resolver_mac.cc
++++ net/proxy/proxy_resolver_mac.cc
+@@ -117,8 +117,10 @@ int ProxyResolverMac::GetProxyForURL(const GURL& query_url,
+   // CFNetworkCopyProxiesForURL initializes some state within CFNetwork that is
+   // required by CFNetworkExecuteProxyAutoConfigurationURL.
+ 
+-  CFArrayRef dummy_result = CFNetworkCopyProxiesForURL(query_url_ref.get(),
+-                                                       NULL);
++  base::ScopedCFTypeRef<CFDictionaryRef> empty_dictionary(
++      CFDictionaryCreate(NULL, NULL, NULL, 0, NULL, NULL));
++  CFArrayRef dummy_result =
++      CFNetworkCopyProxiesForURL(query_url_ref.get(), empty_dictionary);
+   if (dummy_result)
+     CFRelease(dummy_result);
+ 

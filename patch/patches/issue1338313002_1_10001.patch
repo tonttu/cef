@@ -1,0 +1,14 @@
+Index: ui/gfx/image/image_mac.mm
+diff --git ui/gfx/image/image_mac.mm ui/gfx/image/image_mac.mm
+index 6c9e621ceafdadb307ef8d163c0082a11660b00a..42fcb6bcc2d82d882291e8287eafe1bcb57034ae 100644
+--- ui/gfx/image/image_mac.mm
++++ ui/gfx/image/image_mac.mm
+@@ -39,7 +39,7 @@ scoped_refptr<base::RefCountedMemory> Get1xPNGBytesFromNSImage(
+   base::scoped_nsobject<NSBitmapImageRep> ns_bitmap(
+       [[NSBitmapImageRep alloc] initWithCGImage:cg_image]);
+   NSData* ns_data = [ns_bitmap representationUsingType:NSPNGFileType
+-                                            properties:nil];
++                                            properties:@{}];
+   const unsigned char* bytes =
+       static_cast<const unsigned char*>([ns_data bytes]);
+   scoped_refptr<base::RefCountedBytes> refcounted_bytes(

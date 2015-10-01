@@ -1,0 +1,15 @@
+Index: net/cert/cert_database_mac.cc
+diff --git net/cert/cert_database_mac.cc net/cert/cert_database_mac.cc
+index 037558cf919b849e8df16841b17b496ecc098396..42e54c1c9735578a2a2042b3a195ae5dfd788fc7 100644
+--- net/cert/cert_database_mac.cc
++++ net/cert/cert_database_mac.cc
+@@ -106,6 +106,9 @@ OSStatus CertDatabase::Notifier::KeychainCallback(
+     case kSecTrustSettingsChangedEvent:
+       that->cert_db_->NotifyObserversOfCACertChanged(NULL);
+       break;
++
++    default:
++      break;
+   }
+ 
+   return errSecSuccess;
