@@ -35,6 +35,7 @@
 #include "libcef/common/process_message_impl.h"
 #include "libcef/common/request_impl.h"
 
+#include "base/atomic_sequence_num.h"
 #include "base/bind.h"
 #include "base/bind_helpers.h"
 #include "base/command_line.h"
@@ -1251,12 +1252,12 @@ void CefBrowserHostImpl::SendMouseWheelEvent(const CefMouseEvent& event,
   }
 }
 
-static std::atomic<uint32> s_touch_event_id;
+static base::StaticAtomicSequenceNumber s_touch_event_id;
 void CefBrowserHostImpl::PlatformTranslateTouchEvent(blink::WebTouchEvent& result,
                                  const CefTouchEvent& touch_event) {
   // note, we are using this data to drive ui:MotionEvents
   result.cancelable = true;
-  result.uniqueTouchEventId = ++s_touch_event_id;
+  result.uniqueTouchEventId = s_touch_event_id.GetNext();
   result.touchesLength = touch_event.count;
   result.causesScrollingIfUncanceled = true;
 
