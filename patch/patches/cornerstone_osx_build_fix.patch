@@ -1,0 +1,102 @@
+diff --git build/common.gypi build/common.gypi
+index 44e2da4..f40a743 100644
+--- build/common.gypi
++++ build/common.gypi
+@@ -3699,9 +3699,8 @@
+           # Make inline functions have hidden visiblity by default.
+           # Surprisingly, not covered by -fvisibility=hidden.
+           '-fvisibility-inlines-hidden',
+-          # GCC turns on -Wsign-compare for C++ under -Wall, but clang doesn't,
+-          # so we specify it explicitly.  (llvm.org/PR10448, crbug.com/90453)
+-          '-Wsign-compare',
++          '-Wno-nonnull',
++          '-Wno-sign-compare',
+         ],
+         'ldflags': [
+           '-pthread', '-Wl,-z,noexecstack',
+@@ -5025,6 +5024,8 @@
+             # Don't warn about the "struct foo f = {0};" initialization
+             # pattern.
+             '-Wno-missing-field-initializers',
++            '-Wno-nonnull',
++            '-Wno-sign-compare',
+           ],
+           'conditions': [
+             ['chromium_mac_pch', {'GCC_PRECOMPILE_PREFIX_HEADER': 'YES'},
+diff --git chrome/installer/mac/third_party/bsdiff/goobsdiff.gyp chrome/installer/mac/third_party/bsdiff/goobsdiff.gyp
+index 68e4668..a389dbe 100644
+--- chrome/installer/mac/third_party/bsdiff/goobsdiff.gyp
++++ chrome/installer/mac/third_party/bsdiff/goobsdiff.gyp
+@@ -10,7 +10,7 @@
+     'link_settings': {
+       'libraries': [
+         '$(SDKROOT)/usr/lib/libbz2.dylib',
+-        '$(SDKROOT)/usr/lib/libz.dylib',
++        '/usr/lib/libz.dylib',
+       ],
+     },
+     'configurations': {
+diff --git content/content_browser.gypi content/content_browser.gypi
+index bb3fb93..d4190be 100644
+--- content/content_browser.gypi
++++ content/content_browser.gypi
+@@ -2010,7 +2010,7 @@
+       ],
+       'link_settings': {
+         'libraries': [
+-          '$(SDKROOT)/usr/lib/libbsm.dylib',
++          '/usr/lib/libbsm.dylib',
+         ],
+       },
+     }],
+diff --git media/base/mac/avfoundation_glue.mm media/base/mac/avfoundation_glue.mm
+index aed571d5..06f1dda 100644
+--- media/base/mac/avfoundation_glue.mm
++++ media/base/mac/avfoundation_glue.mm
+@@ -156,7 +156,6 @@ enum {
+ } static g_avfoundation_initialization = INITIALIZE_NOT_CALLED;
+ 
+ void AVFoundationGlue::InitializeAVFoundation() {
+-  CHECK([NSThread isMainThread]);
+   if (g_avfoundation_initialization != INITIALIZE_NOT_CALLED)
+     return;
+   g_avfoundation_initialization = LoadAVFoundationInternal() ?
+diff --git net/net_common.gypi net/net_common.gypi
+index 18d4f03..d8109fa 100644
+--- net/net_common.gypi
++++ net/net_common.gypi
+@@ -346,7 +346,7 @@
+             '$(SDKROOT)/System/Library/Frameworks/Foundation.framework',
+             '$(SDKROOT)/System/Library/Frameworks/Security.framework',
+             '$(SDKROOT)/System/Library/Frameworks/SystemConfiguration.framework',
+-            '$(SDKROOT)/usr/lib/libresolv.dylib',
++            '/usr/lib/libresolv.dylib',
+           ]
+         },
+       },
+diff --git printing/printing.gyp printing/printing.gyp
+index e87fe9c..d0cdc6b 100644
+--- printing/printing.gyp
++++ printing/printing.gyp
+@@ -267,7 +267,7 @@
+               ['OS=="mac"', {
+                 'link_settings': {
+                   'libraries': [
+-                    '$(SDKROOT)/usr/lib/libcups.dylib',
++                    '/usr/lib/libcups.dylib',
+                   ]
+                 },
+               }, {
+diff --git sandbox/mac/sandbox_mac.gypi sandbox/mac/sandbox_mac.gypi
+index 32bef72..c5e5792 100644
+--- sandbox/mac/sandbox_mac.gypi
++++ sandbox/mac/sandbox_mac.gypi
+@@ -36,7 +36,7 @@
+       ],
+       'link_settings': {
+         'libraries': [
+-          '$(SDKROOT)/usr/lib/libbsm.dylib',
++          '/usr/lib/libbsm.dylib',
+         ],
+       },
+       'conditions': [
