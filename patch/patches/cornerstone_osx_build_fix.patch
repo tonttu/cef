@@ -100,3 +100,29 @@ index 32bef72..c5e5792 100644
          ],
        },
        'conditions': [
+diff --git third_party/ffmpeg/ffmpeg.gyp third_party/ffmpeg/ffmpeg.gyp
+index 31997bc..71128bd 100755
+--- third_party/ffmpeg/ffmpeg.gyp
++++ third_party/ffmpeg/ffmpeg.gyp
+@@ -377,7 +377,7 @@
+               ],
+               'link_settings': {
+                 'libraries': [
+-                  '$(SDKROOT)/usr/lib/libz.dylib',
++                  '/usr/lib/libz.dylib',
+                 ],
+               },
+               'xcode_settings': {
+diff --git third_party/skia/gyp/zlib.gyp third_party/skia/gyp/zlib.gyp
+index 7ae6230..9769fb9 100644
+--- third_party/skia/gyp/zlib.gyp
++++ third_party/skia/gyp/zlib.gyp
+@@ -31,7 +31,7 @@
+           [ 'skia_android_framework', { 'include_dirs': [ 'external/zlib' ] }],
+           [ 'skia_os == "mac" or skia_os == "ios"', {
+               # XCode needs and explicit file path, not a logical name like -lz.
+-              'link_settings': { 'libraries': [ '$(SDKROOT)/usr/lib/libz.dylib' ] },
++              'link_settings': { 'libraries': [ '/usr/lib/libz.dylib' ] },
+           }],
+           [ 'skia_os not in ["mac", "ios", "win"]',{
+               'link_settings': { 'libraries': [ '-lz' ] },
