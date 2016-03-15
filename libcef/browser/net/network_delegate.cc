@@ -176,15 +176,26 @@ class CefBeforeResourceLoadCallbackImpl : public CefRequestCallback {
 
 int CefBeforeResourceLoadCallbackImpl::kLocatorKey = 0;
 
+template <typename T>
+class CefCallbackHolder : public base::SupportsUserData::Data
+{
+public:
+  CefCallbackHolder(std::shared_ptr<T> callback)
+    : m_callback(std::move(callback))
+  {}
+
+  std::shared_ptr<T> m_callback;
+};
+
 class CefAuthCallbackImpl : public CefAuthCallback {
  public:
-  CefAuthCallbackImpl(const net::NetworkDelegate::AuthCallback& callback,
+  CefAuthCallbackImpl(std::weak_ptr<net::NetworkDelegate::AuthCallback> callback,
                       net::AuthCredentials* credentials)
-      : callback_(callback),
+      : callback_(std::move(callback)),
         credentials_(credentials) {
   }
   ~CefAuthCallbackImpl() override {
-    if (!callback_.is_null()) {
+    if (callback_.lock()) {
       // The auth callback is still pending. Cancel it now.
       if (CEF_CURRENTLY_ON_IOT()) {
         CancelNow(callback_);
@@ -198,11 +209,12 @@ class CefAuthCallbackImpl : public CefAuthCallback {
   void Continue(const CefString& username,
                 const CefString& password) override {
     if (CEF_CURRENTLY_ON_IOT()) {
-      if (!callback_.is_null()) {
+      auto callback = callback_.lock();
+      if (callback && !callback->is_null()) {
         credentials_->Set(username, password);
-        callback_.Run(net::NetworkDelegate::AUTH_REQUIRED_RESPONSE_SET_AUTH);
-        callback_.Reset();
+        callback->Run(net::NetworkDelegate::AUTH_REQUIRED_RESPONSE_SET_AUTH);
       }
+      callback_.reset();
     } else {
       CEF_POST_TASK(CEF_IOT,
           base::Bind(&CefAuthCallbackImpl::Continue, this, username, password));
@@ -211,26 +223,27 @@ class CefAuthCallbackImpl : public CefAuthCallback {
 
   void Cancel() override {
     if (CEF_CURRENTLY_ON_IOT()) {
-      if (!callback_.is_null()) {
-        CancelNow(callback_);
-        callback_.Reset();
-      }
+      CancelNow(callback_);
+      callback_.reset();
     } else {
       CEF_POST_TASK(CEF_IOT, base::Bind(&CefAuthCallbackImpl::Cancel, this));
     }
   }
 
   void Disconnect() {
-    callback_.Reset();
+    callback_.reset();
   }
 
  private:
-  static void CancelNow(const net::NetworkDelegate::AuthCallback& callback) {
+  static void CancelNow(std::weak_ptr<net::NetworkDelegate::AuthCallback> weak) {
     CEF_REQUIRE_IOT();
-    callback.Run(net::NetworkDelegate::AUTH_REQUIRED_RESPONSE_NO_ACTION);
+    auto callback = weak.lock();
+    if (callback && !callback->is_null()) {
+      callback->Run(net::NetworkDelegate::AUTH_REQUIRED_RESPONSE_NO_ACTION);
+    }
   }
 
-  net::NetworkDelegate::AuthCallback callback_;
+  std::weak_ptr<net::NetworkDelegate::AuthCallback> callback_;
   net::AuthCredentials* credentials_;
 
   IMPLEMENT_REFCOUNTING(CefAuthCallbackImpl);
@@ -388,8 +401,11 @@ net::NetworkDelegate::AuthRequiredResponse CefNetworkDelegate::OnAuthRequired(
       if (handler.get()) {
         CefRefPtr<CefFrame> frame = browser->GetFrameForRequest(request);
 
+        auto callback_shared = std::make_shared<AuthCallback>(callback);
         CefRefPtr<CefAuthCallbackImpl> callbackPtr(
-            new CefAuthCallbackImpl(callback, credentials));
+            new CefAuthCallbackImpl(callback_shared, credentials));
+        request->SetUserData("CefNetworkDelegate", new CefCallbackHolder<AuthCallback>(
+                               std::move(callback_shared)));
         if (handler->GetAuthCredentials(browser.get(),
                                         frame,
                                         auth_info.is_proxy,
@@ -412,8 +428,11 @@ net::NetworkDelegate::AuthRequiredResponse CefNetworkDelegate::OnAuthRequired(
   if (user_data) {
     CefRefPtr<CefURLRequestClient> client = user_data->GetClient();
     if (client.get()) {
+      auto callback_shared = std::make_shared<AuthCallback>(callback);
       CefRefPtr<CefAuthCallbackImpl> callbackPtr(
-          new CefAuthCallbackImpl(callback, credentials));
+          new CefAuthCallbackImpl(callback_shared, credentials));
+      request->SetUserData("CefNetworkDelegate", new CefCallbackHolder<AuthCallback>(
+                             std::move(callback_shared)));
       if (client->GetAuthCredentials(auth_info.is_proxy,
                                      auth_info.challenger.host(),
                                      auth_info.challenger.port(),
