@@ -25,6 +25,7 @@
 #include "content/browser/compositor/image_transport_factory.h"
 #include "content/browser/frame_host/render_widget_host_view_guest.h"
 #include "content/browser/renderer_host/dip_util.h"
+#include "content/browser/renderer_host/input/motion_event_web.h"
 #include "content/browser/renderer_host/render_widget_host_delegate.h"
 #include "content/browser/renderer_host/render_widget_host_impl.h"
 #include "content/browser/renderer_host/resize_lock.h"
@@ -35,6 +36,9 @@
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host_view_frame_subscriber.h"
 #include "content/public/common/content_switches.h"
+#include "ui/events/blink/blink_event_util.h"
+#include "ui/events/gesture_detection/gesture_provider_config_helper.h"
+#include "ui/events/gesture_detection/motion_event.h"
 #include "ui/gfx/geometry/dip_util.h"
 #include "ui/gfx/geometry/size_conversions.h"
 #include "ui/gfx/image/image_skia_operations.h"
@@ -447,6 +451,28 @@ class CefBeginFrameTimer : public cc::DelayBasedTimeSourceClient {
   DISALLOW_COPY_AND_ASSIGN(CefBeginFrameTimer);
 };
 
+ui::GestureProvider::Config CreateGestureProviderConfig() {
+  ui::GestureProvider::Config config = ui::GetGestureProviderConfig(
+      ui::GestureProviderConfigType::CURRENT_PLATFORM);
+  // config.disable_click_delay = true;
+  return config;
+}
+
+ui::LatencyInfo CreateLatencyInfo(const blink::WebInputEvent& event) {
+  ui::LatencyInfo latency_info;
+  // The latency number should only be added if the timestamp is valid.
+  if (event.timeStampSeconds) {
+    const int64 time_micros = static_cast<int64>(
+        event.timeStampSeconds * base::Time::kMicrosecondsPerSecond);
+    latency_info.AddLatencyNumberWithTimestamp(
+        ui::INPUT_EVENT_LATENCY_ORIGINAL_COMPONENT,
+        0,
+        0,
+        base::TimeTicks() + base::TimeDelta::FromMicroseconds(time_micros),
+        1);
+  }
+  return latency_info;
+}
 
 CefRenderWidgetHostViewOSR::CefRenderWidgetHostViewOSR(
     bool transparent,
@@ -469,6 +495,7 @@ CefRenderWidgetHostViewOSR::CefRenderWidgetHostViewOSR(
       is_showing_(!render_widget_host_->is_hidden()),
       is_destroyed_(false),
       is_scroll_offset_changed_pending_(false),
+      gesture_provider_(CreateGestureProviderConfig(), this),
       weak_ptr_factory_(this) {
   DCHECK(render_widget_host_);
   DCHECK(!render_widget_host_->GetView());
@@ -820,6 +847,9 @@ void CefRenderWidgetHostViewOSR::UpdateCursor(
 }
 
 void CefRenderWidgetHostViewOSR::SetIsLoading(bool is_loading) {
+  if (!is_loading) return;
+  // make sure gesture detection is fresh
+  gesture_provider_.ResetDetection();
 }
 
 void CefRenderWidgetHostViewOSR::RenderProcessGone(
@@ -1035,6 +1065,26 @@ CefRenderWidgetHostViewOSR::CreateSoftwareOutputDevice(
 }
 
 #if !defined(OS_MACOSX)
+
+void CefRenderWidgetHostViewOSR::ProcessAckedTouchEvent(const content::TouchEventWithLatencyInfo& touch,
+    content::InputEventAckState ack_result) {
+  const bool event_consumed = ack_result ==  content::INPUT_EVENT_ACK_STATE_CONSUMED;
+  gesture_provider_.OnTouchEventAck(touch.event.uniqueTouchEventId, event_consumed);
+}
+
+void CefRenderWidgetHostViewOSR::OnGestureEvent(
+  const ui::GestureEventData& gesture) {
+
+  blink::WebGestureEvent web_event =
+      ui::CreateWebGestureEventFromGestureEventData(gesture);
+
+  // without this check, forwarding gestures does not work!
+  if (web_event.type == blink::WebInputEvent::Undefined)
+    return;
+
+  render_widget_host_->ForwardGestureEventWithLatencyInfo(web_event,
+    CreateLatencyInfo(web_event));
+}
 
 ui::Layer* CefRenderWidgetHostViewOSR::DelegatedFrameHostGetLayer() const {
   return GetRootLayer();
@@ -1258,6 +1308,25 @@ void CefRenderWidgetHostViewOSR::SendMouseWheelEvent(
   if (!render_widget_host_)
     return;
   render_widget_host_->ForwardWheelEvent(event);
+}
+
+void CefRenderWidgetHostViewOSR::SendTouchEvent(
+    const blink::WebTouchEvent& event) {
+  TRACE_EVENT0("libcef", "CefRenderWidgetHostViewOSR::SendTouchEvent");
+
+  content::MotionEventWeb touch_event(event);
+  ui::FilteredGestureProvider::TouchHandlingResult result =
+      gesture_provider_.OnTouchEvent(touch_event);
+
+  if (!result.succeeded)
+    return;
+
+  blink::WebTouchEvent web_event =
+      ui::CreateWebTouchEventFromMotionEvent(touch_event, result.did_generate_scroll);
+
+  if (render_widget_host_)
+    render_widget_host_->ForwardTouchEventWithLatencyInfo(web_event,
+        CreateLatencyInfo(web_event));
 }
 
 void CefRenderWidgetHostViewOSR::SendFocusEvent(bool focus) {

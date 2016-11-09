@@ -18,6 +18,7 @@
 #include "content/browser/renderer_host/delegated_frame_host.h"
 #include "content/browser/renderer_host/render_widget_host_view_base.h"
 #include "ui/compositor/compositor.h"
+#include "ui/events/gesture_detection/filtered_gesture_provider.h"
 
 #if defined(OS_LINUX)
 #include "ui/base/x/x11_util.h"
@@ -82,7 +83,8 @@ class MacHelper;
 
 class CefRenderWidgetHostViewOSR
     : public content::RenderWidgetHostViewBase,
-      public ui::CompositorDelegate
+      public ui::CompositorDelegate,
+      public ui::GestureProviderClient
 #if !defined(OS_MACOSX)
       , public content::DelegatedFrameHostClient
 #endif
@@ -176,6 +178,11 @@ class CefRenderWidgetHostViewOSR
   std::unique_ptr<cc::SoftwareOutputDevice> CreateSoftwareOutputDevice(
       ui::Compositor* compositor) override;
 
+  // ui::GestureProviderClient implementation.
+  void ProcessAckedTouchEvent(const content::TouchEventWithLatencyInfo& touch,
+                              content::InputEventAckState ack_result) override;
+  void OnGestureEvent(const ui::GestureEventData& gesture) override;
+
 #if !defined(OS_MACOSX)
   // DelegatedFrameHostClient implementation.
   ui::Layer* DelegatedFrameHostGetLayer() const override;
@@ -204,6 +211,7 @@ class CefRenderWidgetHostViewOSR
   void SendKeyEvent(const content::NativeWebKeyboardEvent& event);
   void SendMouseEvent(const blink::WebMouseEvent& event);
   void SendMouseWheelEvent(const blink::WebMouseWheelEvent& event);
+  void SendTouchEvent(const blink::WebTouchEvent& event);
   void SendFocusEvent(bool focus);
   void UpdateFrameRate();
 
@@ -277,6 +285,9 @@ class CefRenderWidgetHostViewOSR
   void InvalidateInternal(const gfx::Rect& bounds_in_pixels);
 
   void RequestImeCompositionUpdate(bool start_monitoring);
+
+  // ui::GestureProviderClient implementation.
+  ui::FilteredGestureProvider gesture_provider_;
 
 #if defined(OS_MACOSX)
   friend class MacHelper;

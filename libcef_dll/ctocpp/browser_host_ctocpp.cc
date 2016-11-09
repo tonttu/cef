@@ -607,6 +607,18 @@ void CefBrowserHostCToCpp::SendMouseWheelEvent(const CefMouseEvent& event,
       deltaY);
 }
 
+void CefBrowserHostCToCpp::SendTouchEvent(const CefTouchEvent& event) {
+  cef_browser_host_t* _struct = GetStruct();
+  if (CEF_MEMBER_MISSING(_struct, send_touch_event))
+    return;
+
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Execute
+  _struct->send_touch_event(_struct,
+      &event);
+}
+
 void CefBrowserHostCToCpp::SendFocusEvent(bool setFocus) {
   cef_browser_host_t* _struct = GetStruct();
   if (CEF_MEMBER_MISSING(_struct, send_focus_event))

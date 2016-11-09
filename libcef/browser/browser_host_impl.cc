@@ -3102,3 +3102,24 @@ void CefBrowserHostImpl::EnsureFileDialogManager() {
             platform_delegate_->CreateFileDialogRunner()));
   }
 }
+
+void CefBrowserHostImpl::SendTouchEvent(const CefTouchEvent& event) {
+  if (!CEF_CURRENTLY_ON_UIT()) {
+    CEF_POST_TASK(CEF_UIT,
+      base::Bind(&CefBrowserHostImpl::SendTouchEvent, this, event));
+    return;
+  }
+
+
+  if (!IsWindowless())
+    // there is no API exposed to support this
+    return;
+
+  if (!web_contents())
+    return;
+
+  blink::WebTouchEvent web_event;
+
+  platform_delegate_->TranslateTouchEvent(web_event, event);
+  platform_delegate_->SendTouchEvent(web_event);
+}

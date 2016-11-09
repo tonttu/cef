@@ -49,3 +49,10 @@ bool CefBrowserPlatformDelegateNative::IsWindowless() const {
 bool CefBrowserPlatformDelegateNative::IsViewsHosted() const {
   return false;
 }
+
+void CefBrowserPlatformDelegateNative::TranslateTouchEvent(blink::WebTouchEvent& result,
+                                             const CefTouchEvent& touch_event) {
+}
+
+void CefBrowserPlatformDelegateNative::SendTouchEvent(const blink::WebTouchEvent& web_event) {
+}

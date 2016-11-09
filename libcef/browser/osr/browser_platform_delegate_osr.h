@@ -28,6 +28,7 @@ class CefBrowserPlatformDelegateOsr :
   void SendMouseEvent(const blink::WebMouseEvent& event) override;
   void SendMouseWheelEvent(const blink::WebMouseWheelEvent& event) override;
   void SendFocusEvent(bool setFocus) override;
+  void SendTouchEvent(const blink::WebTouchEvent& web_event) override;
   gfx::Point GetScreenPoint(const gfx::Point& view) const override;
   void ViewText(const std::string& text) override;
   void HandleKeyboardEvent(
@@ -45,6 +46,8 @@ class CefBrowserPlatformDelegateOsr :
   void TranslateWheelEvent(blink::WebMouseWheelEvent& result,
                            const CefMouseEvent& mouse_event,
                            int deltaX, int deltaY) const override;
+  void TranslateTouchEvent(blink::WebTouchEvent& result,
+                           const CefTouchEvent& touch_event) override;
   CefEventHandle GetEventHandle(
       const content::NativeWebKeyboardEvent& event) const override;
   std::unique_ptr<CefFileDialogRunner> CreateFileDialogRunner() override;

@@ -81,6 +81,7 @@ class CefBrowserHostCToCpp
   void SendMouseMoveEvent(const CefMouseEvent& event, bool mouseLeave) OVERRIDE;
   void SendMouseWheelEvent(const CefMouseEvent& event, int deltaX,
       int deltaY) OVERRIDE;
+  void SendTouchEvent(const CefTouchEvent& event) OVERRIDE;
   void SendFocusEvent(bool setFocus) OVERRIDE;
   void SendCaptureLostEvent() OVERRIDE;
   void NotifyMoveOrResizeStarted() OVERRIDE;

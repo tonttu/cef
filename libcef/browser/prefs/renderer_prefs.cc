@@ -108,6 +108,9 @@ void SetChromePrefs(CefBrowserContext* profile,
       prefs->GetBoolean(prefs::kWebKitDomPasteEnabled);
   web.tabs_to_links = prefs->GetBoolean(prefs::kWebkitTabsToLinks);
 
+  // we always want to be able to trigger touch events
+  web.touch_enabled = true;
+
   if (!prefs->GetBoolean(prefs::kWebKitJavascriptEnabled))
     web.javascript_enabled = false;
   if (!prefs->GetBoolean(prefs::kWebKitWebSecurityEnabled))
