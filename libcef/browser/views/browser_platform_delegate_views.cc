@@ -193,6 +193,11 @@ void CefBrowserPlatformDelegateViews::SendMouseWheelEvent(
     host->GetWidget()->ForwardWheelEvent(event);
 }
 
+void CefBrowserPlatformDelegateViews::SendTouchEvent(
+    const blink::WebTouchEvent&)
+{
+}
+
 void CefBrowserPlatformDelegateViews::SendFocusEvent(bool setFocus) {
   // Will result in a call to WebContents::Focus().
   if (setFocus && browser_view_->root_view())
@@ -250,6 +255,12 @@ void CefBrowserPlatformDelegateViews::TranslateWheelEvent(
     const CefMouseEvent& mouse_event,
     int deltaX, int deltaY) const {
   native_delegate_->TranslateWheelEvent(result, mouse_event, deltaX, deltaY);
+}
+
+void CefBrowserPlatformDelegateViews::TranslateTouchEvent(
+    blink::WebTouchEvent&,
+    const CefTouchEvent&)
+{
 }
 
 CefEventHandle CefBrowserPlatformDelegateViews::GetEventHandle(

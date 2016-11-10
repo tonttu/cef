@@ -478,7 +478,8 @@ CefRenderWidgetHostViewOSR::CefRenderWidgetHostViewOSR(
     bool transparent,
     content::RenderWidgetHost* widget,
     CefRenderWidgetHostViewOSR* parent_host_view)
-    : transparent_(transparent),
+    : gesture_provider_(CreateGestureProviderConfig(), this),
+      transparent_(transparent),
       scale_factor_(kDefaultScaleFactor),
       frame_rate_threshold_ms_(0),
 #if !defined(OS_MACOSX)
@@ -496,7 +497,6 @@ CefRenderWidgetHostViewOSR::CefRenderWidgetHostViewOSR(
       is_destroyed_(false),
       is_scroll_offset_changed_pending_(false),
       forward_touch_to_popup_(false),
-      gesture_provider_(CreateGestureProviderConfig(), this),
       weak_ptr_factory_(this) {
   DCHECK(render_widget_host_);
   DCHECK(!render_widget_host_->GetView());
@@ -1324,7 +1324,7 @@ void CefRenderWidgetHostViewOSR::SendTouchEvent(
           // Starting new touch outside the popup widget
           forward_touch_to_popup_ = false;
           CEF_POST_TASK(CEF_UIT,
-              base::Bind(&CefRenderWidgetHostViewOSR::CancelPopupWidget,
+              base::Bind(&CefRenderWidgetHostViewOSR::CancelWidget,
                          popup_host_view_->weak_ptr_factory_.GetWeakPtr()));
           break;
         }
@@ -1364,7 +1364,7 @@ void CefRenderWidgetHostViewOSR::SendTouchEvent(
     return;
 
   blink::WebTouchEvent web_event =
-      ui::CreateWebTouchEventFromMotionEvent(touch_event, result.did_generate_scroll);
+      ui::CreateWebTouchEventFromMotionEvent(touch_event, result.moved_beyond_slop_region);
 
   if (render_widget_host_)
     render_widget_host_->ForwardTouchEventWithLatencyInfo(web_event,

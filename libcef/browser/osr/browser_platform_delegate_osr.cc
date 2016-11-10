@@ -362,10 +362,10 @@ CefRenderWidgetHostViewOSR*
 void  CefBrowserPlatformDelegateOsr::TranslateTouchEvent(blink::WebTouchEvent& result,
                                              const CefTouchEvent& touch_event) {
   // note, we are using this data to drive ui:MotionEvents
-  result.cancelable = true;
+  result.dispatchType = blink::WebInputEvent::Blocking;
   result.uniqueTouchEventId = ui::GetNextTouchEventId();
   result.touchesLength = touch_event.count;
-  result.causesScrollingIfUncanceled = true;
+  result.movedBeyondSlopRegion = true;
 
   // modifiers
   result.modifiers |= TranslateModifiers(touch_event.modifiers);
