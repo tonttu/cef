@@ -1,0 +1,130 @@
+diff --git base/BUILD.gn base/BUILD.gn
+index 8f5be41..c14b1ed 100644
+--- base/BUILD.gn
++++ base/BUILD.gn
+@@ -1455,7 +1455,7 @@ component("base") {
+     sources += [ "power_monitor/power_monitor_device_source_posix.cc" ]
+   }
+ 
+-  if (!use_glib) {
++  if (!use_glib_msg) {
+     sources -= [
+       "message_loop/message_pump_glib.cc",
+       "message_loop/message_pump_glib.h",
+@@ -2118,7 +2118,7 @@ test("base_unittests") {
+     }
+   }
+ 
+-  if (!use_glib) {
++  if (!use_glib_msg) {
+     sources -= [ "message_loop/message_pump_glib_unittest.cc" ]
+   }
+ 
+diff --git base/message_loop/message_loop.cc base/message_loop/message_loop.cc
+index 7309e88..469f4d3 100644
+--- base/message_loop/message_loop.cc
++++ base/message_loop/message_loop.cc
+@@ -29,7 +29,7 @@
+ #if defined(OS_ANDROID)
+ #include "base/message_loop/message_pump_android.h"
+ #endif
+-#if defined(USE_GLIB)
++#if defined(USE_GLIB_MSG)
+ #include "base/message_loop/message_pump_glib.h"
+ #endif
+ 
+@@ -154,7 +154,7 @@ bool MessageLoop::InitMessagePumpForUIFactory(MessagePumpFactory* factory) {
+ // static
+ std::unique_ptr<MessagePump> MessageLoop::CreateMessagePumpForType(Type type) {
+ // TODO(rvargas): Get rid of the OS guards.
+-#if defined(USE_GLIB) && !defined(OS_NACL)
++#if defined(USE_GLIB_MSG) && !defined(OS_NACL)
+   typedef MessagePumpGlib MessagePumpForUI;
+ #elif (defined(OS_LINUX) && !defined(OS_NACL)) || defined(OS_BSD)
+   typedef MessagePumpLibevent MessagePumpForUI;
+@@ -603,7 +603,7 @@ void MessageLoopForUI::Attach() {
+ }
+ #endif
+ 
+-#if defined(USE_OZONE) || (defined(USE_X11) && !defined(USE_GLIB))
++#if defined(USE_OZONE) || (defined(USE_X11) && !defined(USE_GLIB_MSG))
+ bool MessageLoopForUI::WatchFileDescriptor(
+     int fd,
+     bool persistent,
+diff --git base/message_loop/message_loop.h base/message_loop/message_loop.h
+index 79c4c58..d14ab72 100644
+--- base/message_loop/message_loop.h
++++ base/message_loop/message_loop.h
+@@ -527,7 +527,7 @@ class BASE_EXPORT MessageLoopForUI : public MessageLoop {
+   void Abort();
+ #endif
+ 
+-#if defined(USE_OZONE) || (defined(USE_X11) && !defined(USE_GLIB))
++#if defined(USE_OZONE) || (defined(USE_X11) && !defined(USE_GLIB_MSG))
+   // Please see MessagePumpLibevent for definition.
+   bool WatchFileDescriptor(
+       int fd,
+diff --git build/config/BUILD.gn build/config/BUILD.gn
+index 05d48a9..0514138 100644
+--- build/config/BUILD.gn
++++ build/config/BUILD.gn
+@@ -135,6 +135,9 @@ config("feature_flags") {
+   if (use_glib) {
+     defines += [ "USE_GLIB=1" ]
+   }
++  if (use_glib_msg) {
++    defines += [ "USE_GLIB_MSG=1" ]
++  }
+   if (use_openssl_certs) {
+     defines += [ "USE_OPENSSL_CERTS=1" ]
+   }
+diff --git build/config/ui.gni build/config/ui.gni
+index 1212ad2..8894ed3 100644
+--- build/config/ui.gni
++++ build/config/ui.gni
+@@ -49,6 +49,9 @@ declare_args() {
+   # Whether we should use glib, a low level C utility library.
+   use_glib = is_linux
+ 
++  # Use glib message loop
++  use_glib_msg = false
++
+   # Indicates if Wayland display server support is enabled.
+   enable_wayland_server = is_chromeos
+ 
+diff --git ui/events/platform/x11/x11_event_source_libevent.cc ui/events/platform/x11/x11_event_source_libevent.cc
+index 708ab41..86c35af 100644
+--- ui/events/platform/x11/x11_event_source_libevent.cc
++++ ui/events/platform/x11/x11_event_source_libevent.cc
+@@ -81,6 +81,7 @@ std::unique_ptr<ui::Event> TranslateXI2EventToEvent(const XEvent& xev) {
+ }
+ 
+ // Translates a XEvent into a ui::Event.
++/*
+ std::unique_ptr<ui::Event> TranslateXEventToEvent(const XEvent& xev) {
+   int flags = EventFlagsFromXEvent(xev);
+   switch (xev.type) {
+@@ -129,6 +130,7 @@ std::unique_ptr<ui::Event> TranslateXEventToEvent(const XEvent& xev) {
+   }
+   return nullptr;
+ }
++*/
+ 
+ }  // namespace
+ 
+@@ -155,14 +157,7 @@ void X11EventSourceLibevent::RemoveXEventDispatcher(
+ }
+ 
+ void X11EventSourceLibevent::ProcessXEvent(XEvent* xevent) {
+-  std::unique_ptr<ui::Event> translated_event = TranslateXEventToEvent(*xevent);
+-  if (translated_event) {
+-    DispatchEvent(translated_event.get());
+-  } else {
+-    // Only if we can't translate XEvent into ui::Event, try to dispatch XEvent
+-    // directly to XEventDispatchers.
+-    DispatchXEventToXEventDispatchers(xevent);
+-  }
++  DispatchEvent(xevent);
+ }
+ 
+ void X11EventSourceLibevent::AddEventWatcher() {

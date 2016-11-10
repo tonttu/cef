@@ -236,6 +236,17 @@ def GetRequiredArgs():
     # enable_dsyms=true is not explicitly set when is_official_build=false.
     result['enable_dsyms'] = True
 
+  # Cornerstone-specific flags
+  if platform == 'linux':
+    # Remove silent linking failures
+    result['link_pulseaudio'] = True
+    # tcalloc won't work if used in a lazily-loaded shared library
+    result['use_allocator'] = 'none'
+    # glib message loop conflicts with Qt message loop
+    result['use_glib_msg'] = False
+    # Include debug symbols so that we can get meaningful backtraces
+    result['symbol_level'] = 1
+
   return result
 
 def GetMergedArgs(build_args):
