@@ -176,6 +176,11 @@ gypi_paths2 = exec_script("//build/gypi_to_gn.py",
                           "scope",
                           [ "cef_paths2.gypi" ])
 
+cef_short_version = exec_script("../build/util/version.py",
+                                [ "-f", "../../cef/VERSION",
+                                  "-f", "../../chrome/VERSION",
+                                  "-t", "@CEF_MAJOR@.@BUILD@" ],
+                                "trim string" )
 
 #
 # Targets that will be built when depending on "//cef".
@@ -1291,7 +1296,7 @@ if (is_mac) {
     info_plist_target = ":cef_framework_plist"
   }
 } else {
-  shared_library("libcef") {
+  shared_library("libcef-${cef_short_version}") {
     sources = gypi_paths2.includes_common +
               gypi_paths.autogen_cpp_includes +
               gypi_paths2.includes_capi +
@@ -1776,7 +1781,7 @@ if (is_mac) {
               gypi_paths2.cefclient_sources_resources
 
     deps = [
-      ":libcef",
+      ":libcef-${cef_short_version}",
       ":libcef_dll_wrapper",
       "//build/config/sanitizers:deps",
     ]
@@ -1849,7 +1854,7 @@ if (is_mac) {
               gypi_paths2.cefsimple_sources_common
 
     deps = [
-      ":libcef",
+      ":libcef-${cef_short_version}",
       ":libcef_dll_wrapper",
       "//build/config/sanitizers:deps",
     ]
@@ -1904,7 +1909,7 @@ if (is_mac) {
     sources = cef_unittests_sources
 
     deps = cef_unittests_deps + [
-      ":libcef",
+      ":libcef-${cef_short_version}",
       ":libcef_dll_wrapper_unittests",
     ]
 

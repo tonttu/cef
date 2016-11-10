@@ -339,8 +339,10 @@ args = {}
 read_version_file(os.path.join(cef_dir, 'VERSION'), args)
 read_version_file(os.path.join(cef_dir, '../chrome/VERSION'), args)
 
+cef_short_ver = '%s.%s' % (args['CEF_MAJOR'], args['BUILD'])
 cef_ver = '%s.%s.%s.g%s' % (args['CEF_MAJOR'], args['BUILD'], cef_commit_number, cef_rev[:7])
 chromium_ver = args['MAJOR']+'.'+args['MINOR']+'.'+args['BUILD']+'.'+args['PATCH']
+libcef_name = 'libcef-%s' % cef_short_ver
 
 # list of output directories to be archived
 archive_dirs = []
@@ -512,7 +514,7 @@ if platform == 'windows':
   binaries = [
     'chrome_elf.dll',
     'd3dcompiler_47.dll',
-    'libcef.dll',
+    libcef_name + '.dll',
     'libEGL.dll',
     'libGLESv2.dll',
     'natives_blob.bin',
@@ -522,7 +524,7 @@ if platform == 'windows':
       ('x64' if options.x64build else 'x86'),
   ]
 
-  libcef_dll_file = 'libcef.dll.lib'
+  libcef_dll_file = libcef_name + '.dll.lib'
   sandbox_libs = [
     'obj\\base\\base.lib',
     'obj\\base\\base_static.lib',
@@ -536,14 +538,14 @@ if platform == 'windows':
   if mode == 'standard':
     # transfer Debug files
     build_dir = build_dir_debug
-    if not options.allowpartial or path_exists(os.path.join(build_dir, 'libcef.dll')):
+    if not options.allowpartial or path_exists(os.path.join(build_dir, libcef_name + '.dll')):
       valid_build_dir = build_dir
       dst_dir = os.path.join(output_dir, 'Debug')
       make_dir(dst_dir, options.quiet)
       copy_files(os.path.join(script_dir, 'distrib/win/*.dll'), dst_dir, options.quiet)
       for binary in binaries:
         copy_file(os.path.join(build_dir, binary), os.path.join(dst_dir, os.path.basename(binary)), options.quiet)
-      copy_file(os.path.join(build_dir, libcef_dll_file), os.path.join(dst_dir, 'libcef.lib'), \
+      copy_file(os.path.join(build_dir, libcef_dll_file), os.path.join(dst_dir, libcef_name + '.lib'), \
                 options.quiet)
       combine_libs(build_dir, sandbox_libs, os.path.join(dst_dir, 'cef_sandbox.lib'));
 
@@ -551,13 +553,13 @@ if platform == 'windows':
         # create the symbol output directory
         symbol_output_dir = create_output_dir(output_dir_name + '_debug_symbols', options.outputdir)
         # transfer contents
-        copy_file(os.path.join(build_dir, 'libcef.dll.pdb'), symbol_output_dir, options.quiet)
+        copy_file(os.path.join(build_dir, libcef_name + '.dll.pdb'), symbol_output_dir, options.quiet)
     else:
       sys.stderr.write("No Debug build files.\n")
 
   # transfer Release files
   build_dir = build_dir_release
-  if not options.allowpartial or path_exists(os.path.join(build_dir, 'libcef.dll')):
+  if not options.allowpartial or path_exists(os.path.join(build_dir, libcef_name + '.dll')):
     valid_build_dir = build_dir
     dst_dir = os.path.join(output_dir, 'Release')
     make_dir(dst_dir, options.quiet)
@@ -566,7 +568,7 @@ if platform == 'windows':
       copy_file(os.path.join(build_dir, binary), os.path.join(dst_dir, os.path.basename(binary)), options.quiet)
 
     if mode != 'client':
-      copy_file(os.path.join(build_dir, libcef_dll_file), os.path.join(dst_dir, 'libcef.lib'), \
+      copy_file(os.path.join(build_dir, libcef_dll_file), os.path.join(dst_dir, libcef_name + '.lib'), \
           options.quiet)
       combine_libs(build_dir, sandbox_libs, os.path.join(dst_dir, 'cef_sandbox.lib'));
     else:
@@ -576,7 +578,7 @@ if platform == 'windows':
       # create the symbol output directory
       symbol_output_dir = create_output_dir(output_dir_name + '_release_symbols', options.outputdir)
       # transfer contents
-      copy_file(os.path.join(build_dir, 'libcef.dll.pdb'), symbol_output_dir, options.quiet)
+      copy_file(os.path.join(build_dir, libcef_name + '.dll.pdb'), symbol_output_dir, options.quiet)
   else:
     sys.stderr.write("No Release build files.\n")
 
@@ -714,7 +716,7 @@ elif platform == 'linux':
   if mode == 'standard':
     # transfer Debug files
     build_dir = build_dir_debug
-    libcef_path = os.path.join(build_dir, 'libcef.so')
+    libcef_path = os.path.join(build_dir, libcef_name + '.so')
     if not options.allowpartial or path_exists(libcef_path):
       valid_build_dir = build_dir
       dst_dir = os.path.join(output_dir, 'Debug')
@@ -729,7 +731,7 @@ elif platform == 'linux':
 
   # transfer Release files
   build_dir = build_dir_release
-  libcef_path = os.path.join(build_dir, 'libcef.so')
+  libcef_path = os.path.join(build_dir, libcef_name + '.so')
   if not options.allowpartial or path_exists(libcef_path):
     valid_build_dir = build_dir
     dst_dir = os.path.join(output_dir, 'Release')
