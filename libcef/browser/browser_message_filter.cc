@@ -64,7 +64,10 @@ bool CefBrowserMessageFilter::OnMessageReceived(const IPC::Message& message) {
 }
 
 bool CefBrowserMessageFilter::Send(IPC::Message* message) {
-  return host_->Send(message);
+  if (sender_) {
+    return sender_->Send(message);
+  }
+  return false;
 }
 
 void CefBrowserMessageFilter::OnGetNewRenderThreadInfo(
