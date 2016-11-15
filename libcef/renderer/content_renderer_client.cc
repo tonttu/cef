@@ -18,6 +18,8 @@
 #include "libcef/renderer/extensions/print_web_view_helper_delegate.h"
 #include "libcef/renderer/media/cef_key_systems.h"
 #include "libcef/renderer/pepper/pepper_helper.h"
+#include "libcef/renderer/plugins/cef_plugin_placeholder.h"
+#include "libcef/renderer/plugins/plugin_preroller.h"
 #include "libcef/renderer/render_frame_observer.h"
 #include "libcef/renderer/render_message_filter.h"
 #include "libcef/renderer/render_process_observer.h"
@@ -26,15 +28,23 @@
 #include "libcef/renderer/webkit_glue.h"
 
 #include "base/command_line.h"
+#include "base/metrics/user_metrics_action.h"
 #include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
+#include "chrome/common/chrome_switches.h"
+#include "chrome/common/extensions/extension_process_policy.h"
 #include "chrome/common/pepper_permission_util.h"
+#include "chrome/common/url_constants.h"
+#include "chrome/grit/generated_resources.h"
+#include "chrome/renderer/content_settings_observer.h"
+#include "chrome/renderer/extensions/resource_request_policy.h"
 #include "chrome/renderer/loadtimes_extension_bindings.h"
 #include "chrome/renderer/pepper/chrome_pdf_print_client.h"
 #include "chrome/renderer/spellchecker/spellcheck.h"
 #include "chrome/renderer/spellchecker/spellcheck_provider.h"
 #include "components/content_settings/core/common/content_settings_types.h"
+#include "components/nacl/common/nacl_constants.h"
 #include "components/printing/renderer/print_web_view_helper.h"
 #include "components/web_cache/renderer/web_cache_render_process_observer.h"
 #include "content/child/worker_task_runner.h"
@@ -49,6 +59,8 @@
 #include "content/public/renderer/render_view.h"
 #include "content/public/renderer/render_view_visitor.h"
 #include "content/renderer/render_frame_impl.h"
+#include "extensions/common/constants.h"
+#include "extensions/common/switches.h"
 #include "extensions/renderer/dispatcher.h"
 #include "extensions/renderer/dispatcher_delegate.h"
 #include "extensions/renderer/extension_frame_helper.h"
@@ -61,6 +73,7 @@
 #include "third_party/WebKit/public/platform/WebPrerenderingSupport.h"
 #include "third_party/WebKit/public/platform/WebString.h"
 #include "third_party/WebKit/public/platform/WebURL.h"
+#include "third_party/WebKit/public/web/WebConsoleMessage.h"
 #include "third_party/WebKit/public/web/WebDocument.h"
 #include "third_party/WebKit/public/web/WebElement.h"
 #include "third_party/WebKit/public/web/WebFrame.h"
@@ -70,6 +83,7 @@
 #include "third_party/WebKit/public/web/WebRuntimeFeatures.h"
 #include "third_party/WebKit/public/web/WebSecurityPolicy.h"
 #include "third_party/WebKit/public/web/WebView.h"
+#include "ui/base/l10n/l10n_util.h"
 
 #if defined(OS_MACOSX)
 #include "base/mac/mac_util.h"
@@ -183,6 +197,73 @@ void AppendParams(const std::vector<base::string16>& additional_names,
 
   existing_names->swap(names);
   existing_values->swap(values);
+}
+
+std::string GetPluginInstancePosterAttribute(
+    const blink::WebPluginParams& params) {
+  DCHECK_EQ(params.attributeNames.size(), params.attributeValues.size());
+
+  for (size_t i = 0; i < params.attributeNames.size(); ++i) {
+    if (params.attributeNames[i].utf8() == "poster" &&
+        !params.attributeValues[i].isEmpty()) {
+      return params.attributeValues[i].utf8();
+    }
+  }
+  return std::string();
+}
+
+bool IsStandaloneExtensionProcess() {
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(
+      extensions::switches::kExtensionProcess);
+}
+
+bool CrossesExtensionExtents(
+    blink::WebLocalFrame* frame,
+    const GURL& new_url,
+    const extensions::ExtensionSet& extensions,
+    bool is_extension_url,
+    bool is_initial_navigation) {
+  DCHECK(!frame->parent());
+  GURL old_url(frame->document().url());
+
+  // If old_url is still empty and this is an initial navigation, then this is
+  // a window.open operation.  We should look at the opener URL.  Note that the
+  // opener is a local frame in this case.
+  if (is_initial_navigation && old_url.is_empty() && frame->opener()) {
+    blink::WebLocalFrame* opener_frame = frame->opener()->toWebLocalFrame();
+
+    // If we're about to open a normal web page from a same-origin opener stuck
+    // in an extension process, we want to keep it in process to allow the
+    // opener to script it.
+    blink::WebDocument opener_document = opener_frame->document();
+    blink::WebSecurityOrigin opener_origin = opener_document.securityOrigin();
+    bool opener_is_extension_url =
+        !opener_origin.isUnique() && extensions.GetExtensionOrAppByURL(
+            opener_document.url()) != NULL;
+    if (!is_extension_url &&
+        !opener_is_extension_url &&
+        IsStandaloneExtensionProcess() &&
+        opener_origin.canRequest(blink::WebURL(new_url)))
+      return false;
+
+    // In all other cases, we want to compare against the URL that determines
+    // the type of process.  In default Chrome, that's the URL of the opener's
+    // top frame and not the opener frame itself.  In --site-per-process, we
+    // can use the opener frame itself.
+    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+            switches::kSitePerProcess))
+      old_url = opener_frame->document().url();
+    else
+      old_url = opener_frame->top()->document().url();
+  }
+
+  // Only consider keeping non-app URLs in an app process if this window
+  // has an opener (in which case it might be an OAuth popup that tries to
+  // script an iframe within the app).
+  bool should_consider_workaround = !!frame->opener();
+
+  return extensions::CrossesExtensionProcessBoundary(
+      extensions, old_url, new_url, should_consider_workaround);
 }
 
 }  // namespace
@@ -566,9 +647,10 @@ bool CefContentRendererClient::OverrideCreatePlugin(
 
   GURL url(params.url);
   CefViewHostMsg_GetPluginInfo_Output output;
+  blink::WebString top_origin = frame->top()->securityOrigin().toString();
   render_frame->Send(new CefViewHostMsg_GetPluginInfo(
-      render_frame->GetRoutingID(), url, frame->top()->document().url(),
-      orig_mime_type, &output));
+      render_frame->GetRoutingID(), url, GURL(top_origin), orig_mime_type,
+      &output));
 
   *plugin = CreatePlugin(render_frame, frame, params, output);
   return true;
@@ -632,6 +714,93 @@ bool CefContentRendererClient::HandleNavigation(
   return false;
 }
 
+bool CefContentRendererClient::ShouldFork(blink::WebLocalFrame* frame,
+                                          const GURL& url,
+                                          const std::string& http_method,
+                                          bool is_initial_navigation,
+                                          bool is_server_redirect,
+                                          bool* send_referrer) {
+  DCHECK(!frame->parent());
+
+  // For now, we skip the rest for POST submissions.  This is because
+  // http://crbug.com/101395 is more likely to cause compatibility issues
+  // with hosted apps and extensions than WebUI pages.  We will remove this
+  // check when cross-process POST submissions are supported.
+  if (http_method != "GET")
+    return false;
+
+  if (extensions::ExtensionsEnabled()) {
+    const extensions::ExtensionSet* extensions =
+        extension_dispatcher_->extensions();
+
+    // Determine if the new URL is an extension (excluding bookmark apps).
+    const extensions::Extension* new_url_extension =
+        extensions::GetNonBookmarkAppExtension(*extensions, url);
+    bool is_extension_url = !!new_url_extension;
+
+    // If the navigation would cross an app extent boundary, we also need
+    // to defer to the browser to ensure process isolation.  This is not
+    // necessary for server redirects, which will be transferred to a new
+    // process by the browser process when they are ready to commit.  It is
+    // necessary for client redirects, which won't be transferred in the same
+    // way.
+    if (!is_server_redirect &&
+        CrossesExtensionExtents(frame, url, *extensions, is_extension_url,
+            is_initial_navigation)) {
+      // Include the referrer in this case since we're going from a hosted web
+      // page. (the packaged case is handled previously by the extension
+      // navigation test)
+      *send_referrer = true;
+      return true;
+    }
+
+    // If this is a reload, check whether it has the wrong process type.  We
+    // should send it to the browser if it's an extension URL (e.g., hosted app)
+    // in a normal process, or if it's a process for an extension that has been
+    // uninstalled.  Without --site-per-process mode, we never fork processes
+    // for subframes, so this check only makes sense for top-level frames.
+    // TODO(alexmos,nasko): Figure out how this check should work when reloading
+    // subframes in --site-per-process mode.
+    if (!frame->parent() && frame->document().url() == url) {
+      if (is_extension_url != IsStandaloneExtensionProcess())
+        return true;
+    }
+  }
+
+  return false;
+}
+
+bool CefContentRendererClient::WillSendRequest(
+    blink::WebFrame* frame,
+    ui::PageTransition transition_type,
+    const GURL& url,
+    const GURL& first_party_for_cookies,
+    GURL* new_url) {
+  if (extensions::ExtensionsEnabled()) {
+    // Check whether the request should be allowed. If not allowed, we reset the
+    // URL to something invalid to prevent the request and cause an error.
+    if (url.SchemeIs(extensions::kExtensionScheme) &&
+        !extensions::ResourceRequestPolicy::CanRequestResource(
+            url,
+            frame,
+            transition_type,
+            extension_dispatcher_->extensions())) {
+      *new_url = GURL(chrome::kExtensionInvalidRequestURL);
+      return true;
+    }
+
+    if (url.SchemeIs(extensions::kExtensionResourceScheme) &&
+        !extensions::ResourceRequestPolicy::CanRequestExtensionResourceScheme(
+            url,
+            frame)) {
+      *new_url = GURL(chrome::kExtensionResourceInvalidRequestURL);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 content::BrowserPluginDelegate*
 CefContentRendererClient::CreateBrowserPluginDelegate(
     content::RenderFrame* render_frame,
@@ -656,6 +825,7 @@ void CefContentRendererClient::WillDestroyCurrentMessageLoop() {
   single_process_cleanup_complete_ = true;
 }
 
+// static
 bool CefContentRendererClient::IsExtensionOrSharedModuleWhitelisted(
     const GURL& url, const std::set<std::string>& whitelist) {
   DCHECK(extensions::ExtensionsEnabled());
@@ -663,6 +833,167 @@ bool CefContentRendererClient::IsExtensionOrSharedModuleWhitelisted(
       CefContentRendererClient::Get()->extension_dispatcher_->extensions();
   return chrome::IsExtensionOrSharedModuleWhitelisted(url, extension_set,
       whitelist);
+}
+
+// static
+blink::WebPlugin* CefContentRendererClient::CreatePlugin(
+    content::RenderFrame* render_frame,
+    blink::WebLocalFrame* frame,
+    const blink::WebPluginParams& original_params,
+    const CefViewHostMsg_GetPluginInfo_Output& output) {
+  const content::WebPluginInfo& info = output.plugin;
+  const std::string& actual_mime_type = output.actual_mime_type;
+  const base::string16& group_name = output.group_name;
+  const std::string& identifier = output.group_identifier;
+  CefViewHostMsg_GetPluginInfo_Status status = output.status;
+  GURL url(original_params.url);
+  std::string orig_mime_type = original_params.mimeType.utf8();
+  CefPluginPlaceholder* placeholder = NULL;
+
+  // If the browser plugin is to be enabled, this should be handled by the
+  // renderer, so the code won't reach here due to the early exit in
+  // OverrideCreatePlugin.
+  if (status == CefViewHostMsg_GetPluginInfo_Status::kNotFound ||
+      orig_mime_type == content::kBrowserPluginMimeType) {
+    placeholder = CefPluginPlaceholder::CreateLoadableMissingPlugin(
+        render_frame, frame, original_params);
+  } else {
+    // TODO(bauerb): This should be in content/.
+    blink::WebPluginParams params(original_params);
+    for (size_t i = 0; i < info.mime_types.size(); ++i) {
+      if (info.mime_types[i].mime_type == actual_mime_type) {
+        AppendParams(info.mime_types[i].additional_param_names,
+                     info.mime_types[i].additional_param_values,
+                     &params.attributeNames, &params.attributeValues);
+        break;
+      }
+    }
+    if (params.mimeType.isNull() && (actual_mime_type.size() > 0)) {
+      // Webkit might say that mime type is null while we already know the
+      // actual mime type via CefViewHostMsg_GetPluginInfo. In that case
+      // we should use what we know since WebpluginDelegateProxy does some
+      // specific initializations based on this information.
+      params.mimeType = blink::WebString::fromUTF8(actual_mime_type.c_str());
+    }
+
+    auto create_blocked_plugin =
+        [&render_frame, &frame, &params, &info, &identifier, &group_name](
+            int template_id, const base::string16& message) {
+          return CefPluginPlaceholder::CreateBlockedPlugin(
+              render_frame, frame, params, info, identifier, group_name,
+              template_id, message, PlaceholderPosterInfo());
+        };
+    switch (status) {
+      case CefViewHostMsg_GetPluginInfo_Status::kNotFound: {
+        NOTREACHED();
+        break;
+      }
+      case CefViewHostMsg_GetPluginInfo_Status::kAllowed:
+      case CefViewHostMsg_GetPluginInfo_Status::kPlayImportantContent: {
+        // Delay loading plugins if prerendering.
+        // TODO(mmenke):  In the case of prerendering, feed into
+        //                CefContentRendererClient::CreatePlugin instead, to
+        //                reduce the chance of future regressions.
+        bool is_prerendering = false;
+        bool power_saver_enabled =
+            status ==
+                CefViewHostMsg_GetPluginInfo_Status::kPlayImportantContent;
+        bool blocked_for_background_tab =
+            render_frame->IsHidden() && power_saver_enabled;
+
+        PlaceholderPosterInfo poster_info;
+        if (power_saver_enabled) {
+          poster_info.poster_attribute =
+              GetPluginInstancePosterAttribute(params);
+          poster_info.base_url = frame->document().url();
+        }
+
+        if (blocked_for_background_tab || is_prerendering ||
+            !poster_info.poster_attribute.empty()) {
+          placeholder = CefPluginPlaceholder::CreateBlockedPlugin(
+              render_frame, frame, params, info, identifier, group_name,
+              poster_info.poster_attribute.empty() ? IDR_BLOCKED_PLUGIN_HTML
+                                                   : IDR_PLUGIN_POSTER_HTML,
+              l10n_util::GetStringFUTF16(IDS_PLUGIN_BLOCKED, group_name),
+              poster_info);
+          placeholder->set_blocked_for_background_tab(
+              blocked_for_background_tab);
+          placeholder->set_blocked_for_prerendering(is_prerendering);
+          placeholder->set_power_saver_enabled(power_saver_enabled);
+          placeholder->AllowLoading();
+          break;
+        }
+
+        scoped_ptr<content::PluginInstanceThrottler> throttler;
+        if (power_saver_enabled) {
+          throttler = content::PluginInstanceThrottler::Create();
+          // PluginPreroller manages its own lifetime.
+          new CefPluginPreroller(
+              render_frame, frame, params, info, identifier, group_name,
+              l10n_util::GetStringFUTF16(IDS_PLUGIN_BLOCKED, group_name),
+              throttler.get());
+        }
+
+        return render_frame->CreatePlugin(frame, info, params,
+                                          throttler.Pass());
+      }
+      case CefViewHostMsg_GetPluginInfo_Status::kNPAPINotSupported: {
+        content::RenderThread::Get()->RecordAction(
+            base::UserMetricsAction("Plugin_NPAPINotSupported"));
+        placeholder = create_blocked_plugin(
+            IDR_BLOCKED_PLUGIN_HTML,
+            l10n_util::GetStringUTF16(IDS_PLUGIN_NOT_SUPPORTED_METRO));
+        break;
+      }
+      case CefViewHostMsg_GetPluginInfo_Status::kDisabled: {
+        // Intentionally using the blocked plugin resources instead of the
+        // disabled plugin resources. This provides better messaging (no link to
+        // chrome://plugins) and adds testing support.
+        placeholder = create_blocked_plugin(
+            IDR_BLOCKED_PLUGIN_HTML,
+            l10n_util::GetStringFUTF16(IDS_PLUGIN_BLOCKED_BY_POLICY,
+                                       group_name));
+        break;
+      }
+      case CefViewHostMsg_GetPluginInfo_Status::kOutdatedBlocked: {
+        NOTREACHED() << "Plugin installation is not supported.";
+        break;
+      }
+      case CefViewHostMsg_GetPluginInfo_Status::kOutdatedDisallowed: {
+        placeholder = create_blocked_plugin(
+            IDR_BLOCKED_PLUGIN_HTML,
+            l10n_util::GetStringFUTF16(IDS_PLUGIN_OUTDATED, group_name));
+        break;
+      }
+      case CefViewHostMsg_GetPluginInfo_Status::kUnauthorized: {
+        placeholder = create_blocked_plugin(
+            IDR_BLOCKED_PLUGIN_HTML,
+            l10n_util::GetStringFUTF16(IDS_PLUGIN_NOT_AUTHORIZED, group_name));
+        placeholder->AllowLoading();
+        break;
+      }
+      case CefViewHostMsg_GetPluginInfo_Status::kBlocked: {
+        placeholder = create_blocked_plugin(
+            IDR_BLOCKED_PLUGIN_HTML,
+            l10n_util::GetStringFUTF16(IDS_PLUGIN_BLOCKED, group_name));
+        placeholder->AllowLoading();
+        content::RenderThread::Get()->RecordAction(
+            base::UserMetricsAction("Plugin_Blocked"));
+        break;
+      }
+      case CefViewHostMsg_GetPluginInfo_Status::kBlockedByPolicy: {
+        placeholder = create_blocked_plugin(
+            IDR_BLOCKED_PLUGIN_HTML,
+            l10n_util::GetStringFUTF16(IDS_PLUGIN_BLOCKED_BY_POLICY,
+                                       group_name));
+        content::RenderThread::Get()->RecordAction(
+            base::UserMetricsAction("Plugin_BlockedByPolicy"));
+        break;
+      }
+    }
+  }
+  placeholder->SetStatus(status);
+  return placeholder->plugin();
 }
 
 void CefContentRendererClient::BrowserCreated(
@@ -678,8 +1009,8 @@ void CefContentRendererClient::BrowserCreated(
           &params));
   DCHECK_GT(params.browser_id, 0);
 
-  if (params.is_mime_handler_view) {
-    // Don't create a CefBrowser for mime handler views.
+  if (params.is_guest_view) {
+    // Don't create a CefBrowser for guest views.
     return;
   }
 
@@ -738,58 +1069,4 @@ void CefContentRendererClient::RunSingleProcessCleanupOnUIThread() {
   // we need to explicitly delete the object when not running in this mode.
   if (!CefContext::Get()->settings().multi_threaded_message_loop)
     delete host;
-}
-
-blink::WebPlugin* CefContentRendererClient::CreatePlugin(
-    content::RenderFrame* render_frame,
-    blink::WebLocalFrame* frame,
-    const blink::WebPluginParams& original_params,
-    const CefViewHostMsg_GetPluginInfo_Output& output) {
-  const content::WebPluginInfo& info = output.plugin;
-  const std::string& actual_mime_type = output.actual_mime_type;
-  CefViewHostMsg_GetPluginInfo_Status status = output.status;
-  GURL url(original_params.url);
-  std::string orig_mime_type = original_params.mimeType.utf8();
-
-  // If the browser plugin is to be enabled, this should be handled by the
-  // renderer, so the code won't reach here due to the early exit in
-  // OverrideCreatePlugin.
-  if (status == CefViewHostMsg_GetPluginInfo_Status::kNotFound ||
-      orig_mime_type == content::kBrowserPluginMimeType) {
-    return NULL;
-  } else {
-    // TODO(bauerb): This should be in content/.
-    blink::WebPluginParams params(original_params);
-    for (size_t i = 0; i < info.mime_types.size(); ++i) {
-      if (info.mime_types[i].mime_type == actual_mime_type) {
-        AppendParams(info.mime_types[i].additional_param_names,
-                     info.mime_types[i].additional_param_values,
-                     &params.attributeNames, &params.attributeValues);
-        break;
-      }
-    }
-    if (params.mimeType.isNull() && (actual_mime_type.size() > 0)) {
-      // Webkit might say that mime type is null while we already know the
-      // actual mime type via CefViewHostMsg_GetPluginInfo. In that case
-      // we should use what we know since WebpluginDelegateProxy does some
-      // specific initializations based on this information.
-      params.mimeType = blink::WebString::fromUTF8(actual_mime_type.c_str());
-    }
-
-    switch (status) {
-      case CefViewHostMsg_GetPluginInfo_Status::kNotFound: {
-        NOTREACHED();
-        break;
-      }
-      case CefViewHostMsg_GetPluginInfo_Status::kAllowed:
-      case CefViewHostMsg_GetPluginInfo_Status::kPlayImportantContent: {
-        // TODO(cef): Maybe supply a throttler based on power settings.
-        return render_frame->CreatePlugin(frame, info, params, nullptr);
-      }
-      default:
-        // TODO(cef): Provide a placeholder for the various failure conditions.
-        break;
-    }
-  }
-  return NULL;
 }

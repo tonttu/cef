@@ -16,15 +16,15 @@
 #include "libcef/browser/devtools_delegate.h"
 #include "libcef/browser/extensions/browser_extensions_util.h"
 #include "libcef/browser/extensions/extension_system.h"
-#include "libcef/browser/extensions/plugin_info_message_filter.h"
 #include "libcef/browser/media_capture_devices_dispatcher.h"
 #include "libcef/browser/pepper/browser_pepper_host_factory.h"
+#include "libcef/browser/plugins/plugin_info_message_filter.h"
+#include "libcef/browser/plugins/plugin_service_filter.h"
 #include "libcef/browser/printing/printing_message_filter.h"
 #include "libcef/browser/resource_dispatcher_host_delegate.h"
 #include "libcef/browser/speech_recognition_manager_delegate.h"
 #include "libcef/browser/ssl_info_impl.h"
 #include "libcef/browser/thread_util.h"
-#include "libcef/browser/web_plugin_impl.h"
 #include "libcef/common/cef_messages.h"
 #include "libcef/common/cef_switches.h"
 #include "libcef/common/command_line_impl.h"
@@ -40,12 +40,13 @@
 #include "chrome/common/chrome_switches.h"
 #include "content/browser/plugin_service_impl.h"
 #include "content/public/browser/access_token_store.h"
+#include "content/public/browser/browser_ppapi_host.h"
 #include "content/public/browser/browser_url_handler.h"
 #include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/client_certificate_delegate.h"
-#include "content/public/browser/plugin_service_filter.h"
 #include "content/public/browser/quota_permission_context.h"
 #include "content/public/browser/render_process_host.h"
+#include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/resource_dispatcher_host.h"
 #include "content/public/common/content_switches.h"
@@ -57,7 +58,9 @@
 #include "extensions/browser/guest_view/extensions_guest_view_message_filter.h"
 #include "extensions/browser/io_thread_extension_message_filter.h"
 #include "extensions/common/constants.h"
+#include "extensions/common/switches.h"
 #include "net/ssl/ssl_cert_request_info.h"
+#include "ppapi/host/ppapi_host.h"
 #include "third_party/WebKit/public/web/WebWindowFeatures.h"
 #include "ui/base/ui_base_switches.h"
 #include "url/gurl.h"
@@ -265,48 +268,6 @@ class CefQuotaPermissionContext : public content::QuotaPermissionContext {
   DISALLOW_COPY_AND_ASSIGN(CefQuotaPermissionContext);
 };
 
-class CefPluginServiceFilter : public content::PluginServiceFilter {
- public:
-  CefPluginServiceFilter() {}
-
-  bool IsPluginAvailable(int render_process_id,
-                         int render_frame_id,
-                         const void* context,
-                         const GURL& url,
-                         const GURL& policy_url,
-                         content::WebPluginInfo* plugin) override {
-    bool allowed = true;
-
-    CefRefPtr<CefBrowserHostImpl> browser =
-        CefBrowserHostImpl::GetBrowserForFrame(render_process_id,
-                                               render_frame_id);
-    if (browser.get()) {
-      CefRefPtr<CefClient> client = browser->GetClient();
-      if (client.get()) {
-        CefRefPtr<CefRequestHandler> handler = client->GetRequestHandler();
-        if (handler.get()) {
-          CefRefPtr<CefWebPluginInfoImpl> pluginInfo(
-              new CefWebPluginInfoImpl(*plugin));
-          allowed =
-              !handler->OnBeforePluginLoad(browser.get(),
-                                           url.possibly_invalid_spec(),
-                                           policy_url.possibly_invalid_spec(),
-                                           pluginInfo.get());
-        }
-      }
-    }
-
-    return allowed;
-  }
-
-  bool CanLoadPlugin(int render_process_id,
-                     const base::FilePath& path) override {
-    return true;
-  }
-
-  DISALLOW_COPY_AND_ASSIGN(CefPluginServiceFilter);
-};
-
 void TranslatePopupFeatures(const blink::WebWindowFeatures& webKitFeatures,
                             CefPopupFeatures& features) {
   features.x = static_cast<int>(webKitFeatures.x);
@@ -357,6 +318,14 @@ breakpad::CrashHandlerHostLinux* CreateCrashHandlerHost(
 int GetCrashSignalFD(const base::CommandLine& command_line) {
   if (!breakpad::IsCrashReporterEnabled())
     return -1;
+
+  // Extensions have the same process type as renderers.
+  if (command_line.HasSwitch(extensions::switches::kExtensionProcess)) {
+    static breakpad::CrashHandlerHostLinux* crash_handler = NULL;
+    if (!crash_handler)
+      crash_handler = CreateCrashHandlerHost("extension");
+    return crash_handler->GetDeathSignalSocket();
+  }
 
   std::string process_type =
       command_line.GetSwitchValueASCII(switches::kProcessType);
@@ -430,24 +399,37 @@ scoped_refptr<CefBrowserInfo>
         int render_view_process_id,
         int render_view_routing_id,
         int render_frame_process_id,
-        int render_frame_routing_id) {
+        int render_frame_routing_id,
+        bool* is_guest_view) {
   base::AutoLock lock_scope(browser_info_lock_);
+
+  if (is_guest_view)
+    *is_guest_view = false;
 
   BrowserInfoList::const_iterator it = browser_info_list_.begin();
   for (; it != browser_info_list_.end(); ++it) {
     const scoped_refptr<CefBrowserInfo>& browser_info = *it;
-    if (browser_info->is_render_view_id_match(render_view_process_id,
-                                              render_view_routing_id)) {
+    if (browser_info->render_id_manager()->is_render_view_id_match(
+            render_view_process_id, render_view_routing_id)) {
       // Make sure the frame id is also registered.
-      browser_info->add_render_frame_id(render_frame_process_id,
-                                        render_frame_routing_id);
+      browser_info->render_id_manager()->add_render_frame_id(
+          render_frame_process_id, render_frame_routing_id);
       return browser_info;
-    } else if (browser_info->is_render_frame_id_match(
-                  render_frame_process_id,
-                  render_frame_routing_id)) {
+    }
+    if (browser_info->render_id_manager()->is_render_frame_id_match(
+            render_frame_process_id, render_frame_routing_id)) {
       // Make sure the view id is also registered.
-      browser_info->add_render_view_id(render_view_process_id,
-                                       render_view_routing_id);
+      browser_info->render_id_manager()->add_render_view_id(
+          render_view_process_id, render_view_routing_id);
+      return browser_info;
+    }
+    if (extensions::ExtensionsEnabled() &&
+        (browser_info->guest_render_id_manager()->is_render_view_id_match(
+             render_view_process_id, render_view_routing_id) ||
+         browser_info->guest_render_id_manager()->is_render_frame_id_match(
+             render_frame_process_id, render_frame_routing_id))) {
+      if (is_guest_view)
+        *is_guest_view = true;
       return browser_info;
     }
   }
@@ -455,10 +437,10 @@ scoped_refptr<CefBrowserInfo>
   // Must be a popup if it hasn't already been created.
   scoped_refptr<CefBrowserInfo> browser_info =
       new CefBrowserInfo(++next_browser_id_, true);
-  browser_info->add_render_view_id(render_view_process_id,
-                                   render_view_routing_id);
-  browser_info->add_render_frame_id(render_frame_process_id,
-                                    render_frame_routing_id);
+  browser_info->render_id_manager()->add_render_view_id(
+      render_view_process_id, render_view_routing_id);
+  browser_info->render_id_manager()->add_render_frame_id(
+      render_frame_process_id, render_frame_routing_id);
   browser_info_list_.push_back(browser_info);
   return browser_info;
 }
@@ -513,14 +495,26 @@ void CefContentBrowserClient::DestroyAllBrowsers() {
 }
 
 scoped_refptr<CefBrowserInfo> CefContentBrowserClient::GetBrowserInfoForView(
-    int render_process_id, int render_routing_id) {
+    int render_process_id,
+    int render_routing_id,
+    bool* is_guest_view) {
   base::AutoLock lock_scope(browser_info_lock_);
+
+  if (is_guest_view)
+    *is_guest_view = false;
 
   BrowserInfoList::const_iterator it = browser_info_list_.begin();
   for (; it != browser_info_list_.end(); ++it) {
     const scoped_refptr<CefBrowserInfo>& browser_info = *it;
-    if (browser_info->is_render_view_id_match(
+    if (browser_info->render_id_manager()->is_render_view_id_match(
           render_process_id, render_routing_id)) {
+      return browser_info;
+    }
+    if (extensions::ExtensionsEnabled() &&
+        browser_info->guest_render_id_manager()->is_render_view_id_match(
+            render_process_id, render_routing_id)) {
+      if (is_guest_view)
+        *is_guest_view = true;
       return browser_info;
     }
   }
@@ -532,14 +526,26 @@ scoped_refptr<CefBrowserInfo> CefContentBrowserClient::GetBrowserInfoForView(
 }
 
 scoped_refptr<CefBrowserInfo> CefContentBrowserClient::GetBrowserInfoForFrame(
-    int render_process_id, int render_routing_id) {
+    int render_process_id,
+    int render_routing_id,
+    bool* is_guest_view) {
   base::AutoLock lock_scope(browser_info_lock_);
+
+  if (is_guest_view)
+    *is_guest_view = false;
 
   BrowserInfoList::const_iterator it = browser_info_list_.begin();
   for (; it != browser_info_list_.end(); ++it) {
     const scoped_refptr<CefBrowserInfo>& browser_info = *it;
-    if (browser_info->is_render_frame_id_match(
-          render_process_id, render_routing_id)) {
+    if (browser_info->render_id_manager()->is_render_frame_id_match(
+            render_process_id, render_routing_id)) {
+      return browser_info;
+    }
+    if (extensions::ExtensionsEnabled() &&
+        browser_info->guest_render_id_manager()->is_render_frame_id_match(
+            render_process_id, render_routing_id)) {
+      if (is_guest_view)
+        *is_guest_view = true;
       return browser_info;
     }
   }
@@ -574,9 +580,10 @@ void CefContentBrowserClient::RenderProcessWillLaunch(
 
   content::BrowserContext* browser_context = host->GetBrowserContext();
 
+  host->AddFilter(new CefPluginInfoMessageFilter(id,
+      static_cast<CefBrowserContext*>(browser_context)));
+
   if (extensions::ExtensionsEnabled()) {
-    host->AddFilter(
-        new extensions::CefPluginInfoMessageFilter(id, browser_context));
     host->AddFilter(
         new extensions::ExtensionMessageFilter(id, browser_context));
     host->AddFilter(
@@ -717,6 +724,20 @@ void CefContentBrowserClient::AppendExtraCommandLineSwitches(
     };
     command_line->CopySwitchesFrom(*browser_cmd, kSwitchNames,
                                    arraysize(kSwitchNames));
+
+    if (extensions::ExtensionsEnabled()) {
+      // Based on ChromeContentBrowserClientExtensionsPart::
+      // AppendExtraRendererCommandLineSwitches
+      content::RenderProcessHost* process =
+          content::RenderProcessHost::FromID(child_process_id);
+      content::BrowserContext* browser_context =
+          process ? process->GetBrowserContext() : NULL;
+      if (browser_context &&
+          extensions::ProcessMap::Get(browser_context)->Contains(
+              process->GetID())) {
+        command_line->AppendSwitch(extensions::switches::kExtensionProcess);
+      }
+    }
   }
 
 #if defined(OS_LINUX)
@@ -862,12 +883,36 @@ bool CefContentBrowserClient::CanCreateWindow(
   if (last_create_window_params_.opener_process_id == MSG_ROUTING_NONE)
     return false;
 
+  bool is_guest_view = false;
   CefRefPtr<CefBrowserHostImpl> browser =
-      CefBrowserHostImpl::GetBrowserForView(
+      extensions::GetOwnerBrowserForView(
           last_create_window_params_.opener_process_id,
-          last_create_window_params_.opener_view_id);
-  if (!browser.get())
+          last_create_window_params_.opener_view_id,
+          &is_guest_view);
+  DCHECK(browser.get());
+  if (!browser.get()) {
+    // Cancel the popup.
+    last_create_window_params_.opener_process_id = MSG_ROUTING_NONE;
     return false;
+  }
+
+  if (is_guest_view) {
+    content::OpenURLParams params(target_url,
+                                  referrer,
+                                  disposition,
+                                  ui::PAGE_TRANSITION_LINK,
+                                  true);
+    params.user_gesture = user_gesture;
+
+    // Pass navigation to the owner browser.
+    CEF_POST_TASK(CEF_UIT,
+        base::Bind(base::IgnoreResult(&CefBrowserHostImpl::OpenURLFromTab),
+                   browser.get(), nullptr, params));
+
+    // Cancel the popup.
+    last_create_window_params_.opener_process_id = MSG_ROUTING_NONE;
+    return false;
+  }
 
   CefRefPtr<CefClient> client = browser->GetClient();
   bool allow = true;
@@ -946,15 +991,7 @@ void CefContentBrowserClient::OverrideWebkitPrefs(
       base::CommandLine::ForCurrentProcess();
 
   CefRefPtr<CefBrowserHostImpl> browser =
-      CefBrowserHostImpl::GetBrowserForHost(rvh);
-  if (!browser.get() && extensions::ExtensionsEnabled()) {
-    // Retrieve the owner browser, if any.
-    content::WebContents* owner = extensions::GetOwnerForGuestContents(
-        content::WebContents::FromRenderViewHost(rvh));
-    if (owner)
-      browser = CefBrowserHostImpl::GetBrowserForContents(owner);
-  }
-
+      extensions::GetOwnerBrowserForHost(rvh, NULL);
   if (browser.get()) {
     // Populate WebPreferences based on CefBrowserSettings.
     BrowserToWebSettings(browser->settings(), *prefs);

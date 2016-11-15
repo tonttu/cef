@@ -27,10 +27,12 @@
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/widevine_cdm_constants.h"
+#include "components/content_settings/core/common/content_settings_pattern.h"
 #include "content/public/browser/browser_main_runner.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/main_function_params.h"
+#include "extensions/common/constants.h"
 #include "pdf/pdf.h"
 #include "ui/base/layout.h"
 #include "ui/base/resource/resource_bundle.h"
@@ -490,6 +492,9 @@ bool CefMainDelegate::BasicStartupComplete(int* exit_code) {
 
   logging::InitLogging(log_settings);
 
+  ContentSettingsPattern::SetNonWildcardDomainNonPortScheme(
+      extensions::kExtensionScheme);
+
   content::SetContentClient(&content_client_);
 
   return false;
@@ -537,16 +542,19 @@ void CefMainDelegate::PreSandboxStartup() {
         true);  // Create if necessary.
 
 #if defined(WIDEVINE_CDM_AVAILABLE) && defined(ENABLE_PEPPER_CDMS)
-    const base::FilePath& widevine_plugin_path = GetResourcesFilePath();
-    PathService::Override(chrome::FILE_WIDEVINE_CDM_ADAPTER,
-                          widevine_plugin_path.AppendASCII(
-                              kWidevineCdmAdapterFileName));
+    const base::FilePath& widevine_plugin_path =
+        GetResourcesFilePath().AppendASCII(kWidevineCdmAdapterFileName);
+    if (base::PathExists(widevine_plugin_path)) {
+      PathService::Override(chrome::FILE_WIDEVINE_CDM_ADAPTER,
+                            widevine_plugin_path);
+    }
 #if defined(WIDEVINE_CDM_IS_COMPONENT)
-    PathService::Override(chrome::DIR_COMPONENT_WIDEVINE_CDM,
-                          user_data_path.Append(kWidevineCdmBaseDirectory));
+    if (command_line->HasSwitch(switches::kEnableWidevineCdm)) {
+      PathService::Override(chrome::DIR_COMPONENT_WIDEVINE_CDM,
+                            user_data_path.Append(kWidevineCdmBaseDirectory));
+    }
 #endif  // defined(WIDEVINE_CDM_IS_COMPONENT)
 #endif  // defined(WIDEVINE_CDM_AVAILABLE) && defined(ENABLE_PEPPER_CDMS)
-
   }
 
   if (command_line->HasSwitch(switches::kDisablePackLoading))

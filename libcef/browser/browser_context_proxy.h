@@ -29,6 +29,11 @@ class CefBrowserContextProxy : public CefBrowserContext {
   CefBrowserContextProxy(CefRefPtr<CefRequestContextHandler> handler,
                          scoped_refptr<CefBrowserContextImpl> parent);
 
+  // SupportsUserData methods.
+  Data* GetUserData(const void* key) const override;
+  void SetUserData(const void* key, Data* data) override;
+  void RemoveUserData(const void* key) override;
+
   // BrowserContext methods.
   base::FilePath GetPath() const override;
   scoped_ptr<content::ZoomLevelDelegate> CreateZoomLevelDelegate(
@@ -64,6 +69,7 @@ class CefBrowserContextProxy : public CefBrowserContext {
       content::ProtocolHandlerMap* protocol_handlers,
       content::URLRequestInterceptorScopedVector request_interceptors)
       override;
+  PrefService* GetPrefs() override;
 
   scoped_refptr<CefBrowserContextImpl> parent() const {
     return parent_;

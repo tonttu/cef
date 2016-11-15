@@ -104,6 +104,8 @@
 //    CefURLRequestContextGetter* destruction. 
 */
 
+class PrefService;
+
 namespace extensions {
 class CefExtensionSystem;
 }
@@ -141,6 +143,9 @@ class CefBrowserContext
       bool in_memory,
       content::ProtocolHandlerMap* protocol_handlers,
       content::URLRequestInterceptorScopedVector request_interceptors) = 0;
+
+  // Preferences.
+  virtual PrefService* GetPrefs() = 0;
 
   CefResourceContext* resource_context() const {
     return resource_context_.get();

@@ -87,6 +87,7 @@ class CefBrowserContextImpl : public CefBrowserContext {
       content::ProtocolHandlerMap* protocol_handlers,
       content::URLRequestInterceptorScopedVector request_interceptors)
       override;
+  PrefService* GetPrefs() override;
 
   // Guaranteed to exist once this object has been initialized.
   scoped_refptr<CefURLRequestContextGetterImpl> request_context() const {

@@ -84,7 +84,7 @@ scoped_ptr<PrefService> CefBrowserPrefStore::CreateService() {
       new CommandLinePrefStore(command_line));
   factory.set_user_prefs(this);
 
-  scoped_refptr< user_prefs::PrefRegistrySyncable> registry(
+  scoped_refptr<user_prefs::PrefRegistrySyncable> registry(
       new user_prefs::PrefRegistrySyncable());
 
   // Default settings.
@@ -121,6 +121,11 @@ scoped_ptr<PrefService> CefBrowserPrefStore::CreateService() {
   // Based on DeviceIDFetcher::RegisterProfilePrefs.
   registry->RegisterBooleanPref(prefs::kEnableDRM, false);
   registry->RegisterStringPref(prefs::kDRMSalt, "");
+
+  // Plugin settings.
+  // Based on chrome::RegisterBrowserUserPrefs.
+  registry->RegisterBooleanPref(prefs::kPluginsAllowOutdated, false);
+  registry->RegisterBooleanPref(prefs::kPluginsAlwaysAuthorize, false);
 
   return factory.Create(registry.get());
 }

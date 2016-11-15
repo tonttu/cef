@@ -52,14 +52,15 @@ void CefBrowserContext::Initialize() {
 
   resource_context_.reset(new CefResourceContext(
       IsOffTheRecord(),
-      extensions_enabled ? extension_system_->info_map() : NULL));
+      extensions_enabled ? extension_system_->info_map() : NULL,
+      GetHandler()));
 
   BrowserContextDependencyManager::GetInstance()->CreateBrowserContextServices(
       this);
 
   // Spell checking support and possibly other subsystems retrieve the
   // PrefService associated with a BrowserContext via UserPrefs::Get().
-  PrefService* pref_service = CefContentBrowserClient::Get()->pref_service();
+  PrefService* pref_service = GetPrefs();
   DCHECK(pref_service);
   user_prefs::UserPrefs::Set(this, pref_service);
 

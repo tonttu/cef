@@ -104,6 +104,17 @@ class CefContentRendererClient : public content::ContentRendererClient,
                         blink::WebNavigationType type,
                         blink::WebNavigationPolicy default_policy,
                         bool is_redirect) override;
+  bool ShouldFork(blink::WebLocalFrame* frame,
+                  const GURL& url,
+                  const std::string& http_method,
+                  bool is_initial_navigation,
+                  bool is_server_redirect,
+                  bool* send_referrer) override;
+  bool WillSendRequest(blink::WebFrame* frame,
+                       ui::PageTransition transition_type,
+                       const GURL& url,
+                       const GURL& first_party_for_cookies,
+                       GURL* new_url) override;
   content::BrowserPluginDelegate* CreateBrowserPluginDelegate(
       content::RenderFrame* render_frame,
       const std::string& mime_type,
@@ -116,18 +127,18 @@ class CefContentRendererClient : public content::ContentRendererClient,
   static bool IsExtensionOrSharedModuleWhitelisted(
       const GURL& url, const std::set<std::string>& whitelist);
 
+  static blink::WebPlugin* CreatePlugin(
+      content::RenderFrame* render_frame,
+      blink::WebLocalFrame* frame,
+      const blink::WebPluginParams& params,
+      const CefViewHostMsg_GetPluginInfo_Output& output);
+
  private:
   void BrowserCreated(content::RenderView* render_view,
                       content::RenderFrame* render_frame);
 
   // Perform cleanup work for single-process mode.
   void RunSingleProcessCleanupOnUIThread();
-
-  static blink::WebPlugin* CreatePlugin(
-      content::RenderFrame* render_frame,
-      blink::WebLocalFrame* frame,
-      const blink::WebPluginParams& params,
-      const CefViewHostMsg_GetPluginInfo_Output& output);
 
   scoped_refptr<base::SequencedTaskRunner> render_task_runner_;
   scoped_ptr<CefRenderProcessObserver> observer_;

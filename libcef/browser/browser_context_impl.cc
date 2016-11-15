@@ -164,7 +164,7 @@ void CefBrowserContextImpl::Initialize() {
   // Initialize proxy configuration tracker.
   pref_proxy_config_tracker_.reset(
       ProxyServiceFactory::CreatePrefProxyConfigTrackerOfLocalState(
-          CefContentBrowserClient::Get()->pref_service()));
+          GetPrefs()));
 
   // Create the CefURLRequestContextGetterImpl via an indirect call to
   // CreateRequestContext. Triggers a call to CefURLRequestContextGetterImpl::
@@ -339,4 +339,9 @@ net::URLRequestContextGetter*
         content::ProtocolHandlerMap* protocol_handlers,
         content::URLRequestInterceptorScopedVector request_interceptors) {
   return NULL;
+}
+
+PrefService* CefBrowserContextImpl::GetPrefs() {
+  // TODO(cef): Perhaps use per-context settings.
+  return CefContentBrowserClient::Get()->pref_service();
 }

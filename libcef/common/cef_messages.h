@@ -163,6 +163,11 @@ IPC_MESSAGE_ROUTED1(CefMsg_Response,
 IPC_MESSAGE_ROUTED1(CefMsg_ResponseAck,
                     int /* request_id */)
 
+// Tells the render frame to load all blocked plugins with the given identifier.
+// Based on ChromeViewMsg_LoadBlockedPlugins.
+IPC_MESSAGE_ROUTED1(CefViewMsg_LoadBlockedPlugins,
+                    std::string /* identifier */)
+
 // Sent on process startup to indicate whether this process is running in
 // incognito mode. Based on ChromeViewMsg_SetIsIncognitoProcess.
 IPC_MESSAGE_CONTROL1(CefProcessMsg_SetIsIncognitoProcess,
@@ -197,7 +202,7 @@ IPC_STRUCT_BEGIN(CefProcessHostMsg_GetNewBrowserInfo_Params)
   IPC_STRUCT_MEMBER(int, browser_id)
   IPC_STRUCT_MEMBER(bool, is_popup)
   IPC_STRUCT_MEMBER(bool, is_windowless)
-  IPC_STRUCT_MEMBER(bool, is_mime_handler_view)
+  IPC_STRUCT_MEMBER(bool, is_guest_view)
 IPC_STRUCT_END()
 
 // Retrieve information about a newly created browser.
