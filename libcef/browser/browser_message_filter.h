@@ -43,7 +43,7 @@ class CefBrowserMessageFilter : public IPC::MessageFilter {
                       IPC::Message* reply_msg);
   void OnFrameFocused(int32 render_frame_routing_id);
 
-  content::RenderProcessHost* host_;
+  int host_id_;
   IPC::Sender* sender_;
 
   DISALLOW_COPY_AND_ASSIGN(CefBrowserMessageFilter);

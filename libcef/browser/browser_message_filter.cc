@@ -23,7 +23,7 @@
 
 CefBrowserMessageFilter::CefBrowserMessageFilter(
     content::RenderProcessHost* host)
-    : host_(host),
+    : host_id_(host->GetID()),
       sender_(NULL) {
 }
 
@@ -35,7 +35,6 @@ void CefBrowserMessageFilter::OnFilterAdded(IPC::Sender* sender) {
 }
 
 void CefBrowserMessageFilter::OnFilterRemoved() {
-  host_ = NULL;
   sender_ = NULL;
 }
 
@@ -97,9 +96,9 @@ void CefBrowserMessageFilter::OnGetNewBrowserInfo(
   // Popup windows may not have info yet.
   scoped_refptr<CefBrowserInfo> info =
       CefContentBrowserClient::Get()->GetOrCreateBrowserInfo(
-          host_->GetID(),
+          host_id_,
           render_view_routing_id,
-          host_->GetID(),
+          host_id_,
           render_frame_routing_id,
           &params->is_guest_view);
   params->browser_id = info->browser_id();
@@ -111,7 +110,7 @@ void CefBrowserMessageFilter::OnCreateWindow(
     const ViewHostMsg_CreateWindow_Params& params,
     IPC::Message* reply_msg) {
   CefContentBrowserClient::LastCreateWindowParams lcwp;
-  lcwp.opener_process_id = host_->GetID();
+  lcwp.opener_process_id = host_id_;
   lcwp.opener_view_id = params.opener_id;
   lcwp.opener_frame_id = params.opener_render_frame_id;
   lcwp.target_url = params.target_url;
@@ -130,11 +129,8 @@ void CefBrowserMessageFilter::OnFrameFocused(int32 render_frame_routing_id) {
     return;
   }
 
-  if (!host_)
-    return;
-
   CefRefPtr<CefBrowserHostImpl> browser =
-      CefBrowserHostImpl::GetBrowserForFrame(host_->GetID(),
+      CefBrowserHostImpl::GetBrowserForFrame(host_id_,
                                              render_frame_routing_id);
   if (browser.get())
     browser->SetFocusedFrame(render_frame_routing_id);
