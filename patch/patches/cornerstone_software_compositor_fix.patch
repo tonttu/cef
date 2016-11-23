@@ -1,0 +1,65 @@
+diff --git third_party/WebKit/Source/platform/graphics/gpu/DrawingBuffer.cpp third_party/WebKit/Source/platform/graphics/gpu/DrawingBuffer.cpp
+index 25d0041..77889b1 100644
+--- third_party/WebKit/Source/platform/graphics/gpu/DrawingBuffer.cpp
++++ third_party/WebKit/Source/platform/graphics/gpu/DrawingBuffer.cpp
+@@ -273,15 +273,15 @@ std::unique_ptr<cc::SharedBitmap> DrawingBuffer::createOrRecycleBitmap() {
+ bool DrawingBuffer::PrepareTextureMailbox(
+     cc::TextureMailbox* outMailbox,
+     std::unique_ptr<cc::SingleReleaseCallback>* outReleaseCallback) {
+-  bool forceGpuResult = false;
++  bool useSharedMemory = true;
+   return prepareTextureMailboxInternal(outMailbox, outReleaseCallback,
+-                                       forceGpuResult);
++                                       useSharedMemory);
+ }
+ 
+ bool DrawingBuffer::prepareTextureMailboxInternal(
+     cc::TextureMailbox* outMailbox,
+     std::unique_ptr<cc::SingleReleaseCallback>* outReleaseCallback,
+-    bool forceGpuResult) {
++    bool useSharedMemory) {
+   if (m_destructionInProgress) {
+     // It can be hit in the following sequence.
+     // 1. WebGL draws something.
+@@ -309,7 +309,7 @@ bool DrawingBuffer::prepareTextureMailboxInternal(
+   if (m_antiAliasingMode != None)
+     commit();
+ 
+-  if (m_softwareRendering && !forceGpuResult) {
++  if (useSharedMemory) {
+     std::unique_ptr<cc::SharedBitmap> bitmap = createOrRecycleBitmap();
+     if (!bitmap)
+       return false;
+@@ -322,6 +322,7 @@ bool DrawingBuffer::prepareTextureMailboxInternal(
+                         : WebGLImageConversion::AlphaDoNothing;
+     readBackFramebuffer(pixels, size().width(), size().height(), ReadbackSkia,
+                         op);
++    restoreFramebufferBindings();
+ 
+     *outMailbox = cc::TextureMailbox(bitmap.get(), m_size);
+ 
+@@ -464,9 +465,9 @@ PassRefPtr<StaticBitmapImage> DrawingBuffer::transferToStaticBitmapImage() {
+   std::unique_ptr<cc::SingleReleaseCallback> releaseCallback;
+   bool success = false;
+   if (grContext) {
+-    bool forceGpuResult = true;
++    bool useSharedMemory = false;
+     success = prepareTextureMailboxInternal(&textureMailbox, &releaseCallback,
+-                                            forceGpuResult);
++                                            useSharedMemory);
+   }
+   if (!success) {
+     // If we can't get a mailbox, return an transparent black ImageBitmap.
+diff --git third_party/WebKit/Source/platform/graphics/gpu/DrawingBuffer.h third_party/WebKit/Source/platform/graphics/gpu/DrawingBuffer.h
+index cf72de0..0ef6b90 100644
+--- third_party/WebKit/Source/platform/graphics/gpu/DrawingBuffer.h
++++ third_party/WebKit/Source/platform/graphics/gpu/DrawingBuffer.h
+@@ -339,7 +339,7 @@ class PLATFORM_EXPORT DrawingBuffer
+   bool prepareTextureMailboxInternal(
+       cc::TextureMailbox* outMailbox,
+       std::unique_ptr<cc::SingleReleaseCallback>* outReleaseCallback,
+-      bool forceGpuResult);
++      bool useSharedMemory);
+ 
+   // Callbacks for mailboxes given to the compositor from PrepareTextureMailbox.
+   void gpuMailboxReleased(const gpu::Mailbox&,
