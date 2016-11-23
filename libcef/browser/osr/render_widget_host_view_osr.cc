@@ -1065,8 +1065,6 @@ CefRenderWidgetHostViewOSR::CreateSoftwareOutputDevice(
   return base::WrapUnique(software_output_device_);
 }
 
-#if !defined(OS_MACOSX)
-
 void CefRenderWidgetHostViewOSR::ProcessAckedTouchEvent(const content::TouchEventWithLatencyInfo& touch,
     content::InputEventAckState ack_result) {
   const bool event_consumed = ack_result ==  content::INPUT_EVENT_ACK_STATE_CONSUMED;
@@ -1086,6 +1084,8 @@ void CefRenderWidgetHostViewOSR::OnGestureEvent(
   render_widget_host_->ForwardGestureEventWithLatencyInfo(web_event,
     CreateLatencyInfo(web_event));
 }
+
+#if !defined(OS_MACOSX)
 
 ui::Layer* CefRenderWidgetHostViewOSR::DelegatedFrameHostGetLayer() const {
   return GetRootLayer();
