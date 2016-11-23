@@ -1,0 +1,33 @@
+diff --git content/renderer/browser_plugin/browser_plugin.cc content/renderer/browser_plugin/browser_plugin.cc
+index d8eb0bb..01673df 100644
+--- content/renderer/browser_plugin/browser_plugin.cc
++++ content/renderer/browser_plugin/browser_plugin.cc
+@@ -438,6 +438,10 @@ blink::WebInputEventResult BrowserPlugin::handleInputEvent(
+   if (guest_crashed_ || !attached())
+     return blink::WebInputEventResult::NotHandled;
+ 
++  if (blink::WebInputEvent::isTouchEventType(event.type)) {
++    return blink::WebInputEventResult::NotHandled;
++  }
++
+   DCHECK(!blink::WebInputEvent::isTouchEventType(event.type));
+ 
+   if (event.type == blink::WebInputEvent::MouseWheel) {
+@@ -446,7 +450,7 @@ blink::WebInputEventResult BrowserPlugin::handleInputEvent(
+       return blink::WebInputEventResult::NotHandled;
+   }
+ 
+-  if (blink::WebInputEvent::isGestureEventType(event.type)) {
++  /*if (blink::WebInputEvent::isGestureEventType(event.type)) {
+     auto gesture_event = static_cast<const blink::WebGestureEvent&>(event);
+     DCHECK(blink::WebInputEvent::GestureTapDown == event.type ||
+            gesture_event.resendingPluginId == browser_plugin_instance_id_);
+@@ -456,7 +460,7 @@ blink::WebInputEventResult BrowserPlugin::handleInputEvent(
+     return gesture_event.resendingPluginId == browser_plugin_instance_id_
+                ? blink::WebInputEventResult::NotHandled
+                : blink::WebInputEventResult::HandledApplication;
+-  }
++  }*/
+ 
+   if (event.type == blink::WebInputEvent::ContextMenu)
+     return blink::WebInputEventResult::HandledSuppressed;
