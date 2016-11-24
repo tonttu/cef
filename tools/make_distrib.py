@@ -282,7 +282,7 @@ args = {}
 read_version_file(os.path.join(cef_dir, 'VERSION'), args)
 read_version_file(os.path.join(cef_dir, '../chrome/VERSION'), args)
 
-cef_short_ver = '%s.%s' % (args['CEF_MAJOR'], args['BUILD'])
+cef_short_ver = '%s.%s-2' % (args['CEF_MAJOR'], args['BUILD'])
 cef_ver = '%s.%s.g%s' % (cef_short_ver, cef_commit_number, cef_rev[:7])
 chromium_ver = args['MAJOR']+'.'+args['MINOR']+'.'+args['BUILD']+'.'+args['PATCH']
 libcef_name = 'libcef-%s' % cef_short_ver

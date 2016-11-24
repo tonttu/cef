@@ -11,7 +11,7 @@
     'framework_name': 'Chromium Embedded Framework',
     'commit_number': '<!(python tools/commit_number.py)',
     'chrome_version': '<!(python ../build/util/version.py -f ../chrome/VERSION -t "@MAJOR@.@MINOR@.@BUILD@.@PATCH@")',
-    'cef_short_version': '<!(python ../build/util/version.py -f VERSION -f ../chrome/VERSION -t "@CEF_MAJOR@.@BUILD@")',
+    'cef_short_version': '<!(python ../build/util/version.py -f VERSION -f ../chrome/VERSION -t "@CEF_MAJOR@.@BUILD@-2")',
     # Need to be creative to match dylib version formatting requirements.
     'version_mac_dylib':
         '<!(python ../build/util/version.py -f VERSION -f ../chrome/VERSION -t "@CEF_MAJOR@<(commit_number).@BUILD_HI@.@BUILD_LO@" -e "BUILD_HI=int(BUILD)/256" -e "BUILD_LO=int(BUILD)%256")',
