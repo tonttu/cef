@@ -71,4 +71,4 @@ def process_file(path):
     f.write("\n")
 
 def apply(confpath):
-  process_file(os.path.join(confpath, "obj", "cef", "libcef.ninja"))
+  process_file(os.path.join(confpath, "obj", "cef", "libcef-3.2883.ninja"))

@@ -1,0 +1,57 @@
+diff --git build/config/win/BUILD.gn build/config/win/BUILD.gn
+index 9b6ac74..47cd3e4 100644
+--- build/config/win/BUILD.gn
++++ build/config/win/BUILD.gn
+@@ -42,6 +42,10 @@ config("compiler") {
+     "/bigobj",  # Some of our files are bigger than the regular limits.
+   ]
+ 
++  include_dirs = [
++    "C:\WinDDK\7600.16385.1\inc\atl71"
++  ]
++
+   # Force C/C++ mode for the given GN detected file type. This is necessary
+   # for precompiled headers where the same source file is compiled in both
+   # modes.
+@@ -185,7 +189,6 @@ config("runtime_library") {
+     "CERT_CHAIN_PARA_HAS_EXTRA_FIELDS",
+     "PSAPI_VERSION=1",
+     "WIN32",
+-    "_SECURE_ATL",
+   ]
+ 
+   if (!use_vs_code_analysis) {
+diff --git cef cef
+--- cef
++++ cef
+@@ -1 +1 @@
+-Subproject commit 4e86d63451f931b6cd946febfb434bf4d98a5bed
++Subproject commit 4e86d63451f931b6cd946febfb434bf4d98a5bed-dirty
+diff --git chrome/common/chrome_paths.cc chrome/common/chrome_paths.cc
+index 1aa1f27..4a83408 100644
+--- chrome/common/chrome_paths.cc
++++ chrome/common/chrome_paths.cc
+@@ -83,7 +83,11 @@ bool GetInternalPluginsDirectory(base::FilePath* result) {
+ #endif
+ 
+   // The rest of the world expects plugins in the module directory.
++#if defined(OS_WIN)
++  return PathService::Get(base::DIR_MODULE, result);
++#else
+   return PathService::Get(base::DIR_SHARED_LIB, result);
++#endif
+ }
+ 
+ // Gets the path for bundled implementations of components. Note that these
+@@ -102,7 +106,11 @@ bool GetComponentDirectory(base::FilePath* result) {
+ #endif
+ 
+   // The rest of the world expects components in the module directory.
++#if defined(OS_WIN)
++  return PathService::Get(base::DIR_MODULE, result);
++#else
+   return PathService::Get(base::DIR_SHARED_LIB, result);
++#endif
+ }
+ 
+ #if defined(OS_WIN)

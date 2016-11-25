@@ -1318,11 +1318,23 @@ if (is_mac) {
       configs +=
           [ "//build/config/win:default_large_module_incremental_linking" ]
 
-      deps += [ 
+      deps += [
         # Bring in ui_unscaled_resources.rc which contains custom cursors.
         # TODO(cef): Remove this once custom cursors can be loaded via
         # ResourceBundle. See crbug.com/147663.
         "//ui/resources:ui_unscaled_resources_grd",
+      ]
+
+      lib_dirs = [
+        "C:\WinDDK\7600.16385.1\lib\ATL\amd64"
+      ]
+
+      libs = [
+        "atlthunk.lib"
+      ]
+
+      ldflags = [
+        "/NODEFAULTLIB:olepro32.lib"
       ]
     }
 
