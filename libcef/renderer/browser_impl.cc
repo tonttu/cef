@@ -618,12 +618,16 @@ void CefBrowserImpl::DidHandleGestureEvent(const blink::WebGestureEvent& event) 
         app->GetRenderProcessHandler();
     if (handler.get()) {
       float scale = render_view()->GetWebView()->pageScaleFactor();
-      blink::WebElement e = render_view()->GetMainRenderFrame()->GetFocusedElement();
-      blink::WebRect r = e.boundsInViewportSpace();
-
-      CefRect rect(r.x, r.y, r.width, r.height);
-      CefPoint p(event.x, event.y);
-      handler->OnEditableNodeTouched(this, rect, p, scale);
+      auto mainRenderFrame = render_view()->GetMainRenderFrame();
+      if (mainRenderFrame) {
+        blink::WebElement e = mainRenderFrame->GetFocusedElement();
+        if (!e.isNull()) {
+          blink::WebRect r = e.boundsInViewportSpace();
+          CefRect rect(r.x, r.y, r.width, r.height);
+          CefPoint p(event.x, event.y);
+          handler->OnEditableNodeTouched(this, rect, p, scale);
+        }
+      }
     }
   }
 }
