@@ -148,15 +148,44 @@ def create_readme():
   if not options.quiet:
     sys.stdout.write('Creating README.TXT file.\n')
 
+def create_fuzed_gtest(tests_dir):
+  """ Generate a fuzed version of gtest and build the expected directory structure. """
+  src_gtest_dir = os.path.join(src_dir, 'testing', 'gtest')
+  run('%s fuse_gtest_files.py \"%s\"' % (sys.executable, tests_dir),
+      os.path.join(src_gtest_dir, 'scripts'))
+
+  if not options.quiet:
+    sys.stdout.write('Building gtest directory structure.\n')
+
+  target_gtest_dir = os.path.join(tests_dir, 'gtest')
+  gtest_header = os.path.join(target_gtest_dir, 'gtest.h')
+  gtest_cpp = os.path.join(target_gtest_dir, 'gtest-all.cc')
+
+  if not os.path.exists(gtest_header):
+    raise Exception('Generated file not found: %s' % gtest_header)
+  if not os.path.exists(gtest_cpp):
+    raise Exception('Generated file not found: %s' % gtest_cpp)
+
+  # gtest header file at tests/gtest/include/gtest/gtest.h
+  target_gtest_header_dir = os.path.join(target_gtest_dir, 'include', 'gtest')
+  make_dir(target_gtest_header_dir, options.quiet)
+  move_file(gtest_header, target_gtest_header_dir, options.quiet)
+
+  # gtest source file at tests/gtest/src/gtest-all.cc
+  target_gtest_cpp_dir = os.path.join(target_gtest_dir, 'src')
+  make_dir(target_gtest_cpp_dir, options.quiet)
+  move_file(gtest_cpp, target_gtest_cpp_dir, options.quiet)
+
+  # gtest LICENSE file at tests/gtest/LICENSE
+  copy_file(os.path.join(src_gtest_dir, 'LICENSE'), target_gtest_dir, options.quiet)
+
+  # CEF README file at tests/gtest/README.cef
+  copy_file(os.path.join(cef_dir, 'tests', 'gtest', 'README.cef.in'),
+            os.path.join(target_gtest_dir, 'README.cef'), options.quiet)
+
 def transfer_gypi_files(src_dir, gypi_paths, gypi_path_prefix, dst_dir, quiet):
   """ Transfer files from one location to another. """
   for path in gypi_paths:
-    # skip gyp includes
-    if path[:2] == '<@':
-        continue
-    # skip test files
-    if path.find('/test/') >= 0:
-        continue
     src = os.path.join(src_dir, path)
     dst = os.path.join(dst_dir, path.replace(gypi_path_prefix, ''))
     dst_path = os.path.dirname(dst)
@@ -215,9 +244,10 @@ def combine_libs(build_dir, libs, dest_lib):
   cmdline = 'msvs_env.bat win%s python combine_libs.py -o "%s"' % (platform_arch, dest_lib)
   for lib in libs:
     lib_path = os.path.join(build_dir, lib)
-    if not path_exists(lib_path):
-      raise Exception('Library not found: ' + lib_path)
-    cmdline = cmdline + ' "%s"' % lib_path
+    for path in get_files(lib_path):  # Expand wildcards in |lib_path|.
+      if not path_exists(path):
+        raise Exception('File not found: ' + path)
+      cmdline = cmdline + ' "%s"' % path
   run(cmdline, os.path.join(cef_dir, 'tools'))
 
 def run(command_line, working_dir):
@@ -471,13 +501,35 @@ if mode == 'standard' or mode == 'minimal':
                          variables, options.quiet)
 
 if mode == 'standard':
-  # create the cefclient directory
-  cefclient_dir = os.path.join(output_dir, 'cefclient')
+  # create the tests directory
+  tests_dir = os.path.join(output_dir, 'tests')
+  make_dir(tests_dir, options.quiet)
+
+  # create the tests/shared directory
+  shared_dir = os.path.join(tests_dir, 'shared')
+  make_dir(shared_dir, options.quiet)
+
+  # create the tests/cefclient directory
+  cefclient_dir = os.path.join(tests_dir, 'cefclient')
   make_dir(cefclient_dir, options.quiet)
 
-  # create the cefsimple directory
-  cefsimple_dir = os.path.join(output_dir, 'cefsimple')
+  # create the tests/cefsimple directory
+  cefsimple_dir = os.path.join(tests_dir, 'cefsimple')
   make_dir(cefsimple_dir, options.quiet)
+
+  # create the tests/ceftests directory
+  ceftests_dir = os.path.join(tests_dir, 'ceftests')
+  make_dir(ceftests_dir, options.quiet)
+
+  # transfer common shared files
+  transfer_gypi_files(cef_dir, cef_paths2['shared_sources_browser'], \
+                      'tests/shared/', shared_dir, options.quiet)
+  transfer_gypi_files(cef_dir, cef_paths2['shared_sources_common'], \
+                      'tests/shared/', shared_dir, options.quiet)
+  transfer_gypi_files(cef_dir, cef_paths2['shared_sources_renderer'], \
+                      'tests/shared/', shared_dir, options.quiet)
+  transfer_gypi_files(cef_dir, cef_paths2['shared_sources_resources'], \
+                      'tests/shared/', shared_dir, options.quiet)
 
   # transfer common cefclient files
   transfer_gypi_files(cef_dir, cef_paths2['cefclient_sources_browser'], \
@@ -493,6 +545,13 @@ if mode == 'standard':
   transfer_gypi_files(cef_dir, cef_paths2['cefsimple_sources_common'], \
                       'tests/cefsimple/', cefsimple_dir, options.quiet)
 
+  # transfer common ceftests files
+  transfer_gypi_files(cef_dir, cef_paths2['ceftests_sources_common'], \
+                      'tests/ceftests/', ceftests_dir, options.quiet)
+
+  # create the fuzed gtest version
+  create_fuzed_gtest(tests_dir)
+
   # process cmake templates
   process_cmake_template(os.path.join(cef_dir, 'tests', 'cefclient', 'CMakeLists.txt.in'), \
                          os.path.join(cefclient_dir, 'CMakeLists.txt'), \
@@ -500,15 +559,18 @@ if mode == 'standard':
   process_cmake_template(os.path.join(cef_dir, 'tests', 'cefsimple', 'CMakeLists.txt.in'), \
                          os.path.join(cefsimple_dir, 'CMakeLists.txt'), \
                          variables, options.quiet)
+  process_cmake_template(os.path.join(cef_dir, 'tests', 'gtest', 'CMakeLists.txt.in'), \
+                         os.path.join(tests_dir, 'gtest', 'CMakeLists.txt'), \
+                         variables, options.quiet)
+  process_cmake_template(os.path.join(cef_dir, 'tests', 'ceftests', 'CMakeLists.txt.in'), \
+                         os.path.join(ceftests_dir, 'CMakeLists.txt'), \
+                         variables, options.quiet)
 
-  # transfer gyp files
-  paths_gypi = os.path.join(cef_dir, 'cef_paths2.gypi')
-  data = read_file(paths_gypi)
-  data = data.replace('tests/cefclient/', 'cefclient/')
-  data = data.replace('tests/cefsimple/', 'cefsimple/')
-  write_file(os.path.join(output_dir, 'cef_paths2.gypi'), data)
+  # transfer gypi files
   copy_file(os.path.join(cef_dir, 'cef_paths.gypi'), \
             os.path.join(output_dir, 'cef_paths.gypi'), options.quiet)
+  copy_file(os.path.join(cef_dir, 'cef_paths2.gypi'), \
+            os.path.join(output_dir, 'cef_paths2.gypi'), options.quiet)
 
 if platform == 'windows':
   binaries = [
@@ -526,6 +588,7 @@ if platform == 'windows':
 
   libcef_dll_file = libcef_name + '.dll.lib'
   sandbox_libs = [
+    'obj\\base\\allocator\\unified_allocator_shim\\*.obj',
     'obj\\base\\base.lib',
     'obj\\base\\base_static.lib',
     'obj\\base\\third_party\\dynamic_annotations\\dynamic_annotations.lib',
@@ -608,6 +671,10 @@ if platform == 'windows':
                    mode, output_dir, options.quiet)
 
   if mode == 'standard':
+    # transfer shared files
+    transfer_gypi_files(cef_dir, cef_paths2['shared_sources_win'], \
+                        'tests/shared/', shared_dir, options.quiet)
+
     # transfer cefclient files
     transfer_gypi_files(cef_dir, cef_paths2['cefclient_sources_win'], \
                         'tests/cefclient/', cefclient_dir, options.quiet)
@@ -615,6 +682,12 @@ if platform == 'windows':
     # transfer cefsimple files
     transfer_gypi_files(cef_dir, cef_paths2['cefsimple_sources_win'], \
                         'tests/cefsimple/', cefsimple_dir, options.quiet)
+
+    # transfer ceftests files
+    transfer_gypi_files(cef_dir, cef_paths2['ceftests_sources_win'], \
+                        'tests/ceftests/', ceftests_dir, options.quiet)
+    transfer_gypi_files(cef_dir, cef_paths2['ceftests_sources_views'], \
+                        'tests/ceftests/', ceftests_dir, options.quiet)
 
   if not options.nodocs:
     # generate doc files
@@ -685,17 +758,19 @@ elif platform == 'macosx':
                    mode, output_dir, options.quiet)
 
   if mode == 'standard':
+    # transfer shared files
+    transfer_gypi_files(cef_dir, cef_paths2['shared_sources_mac'], \
+                        'tests/shared/', shared_dir, options.quiet)
+    transfer_gypi_files(cef_dir, cef_paths2['shared_sources_mac_helper'], \
+                        'tests/shared/', shared_dir, options.quiet)
+
     # transfer cefclient files
     transfer_gypi_files(cef_dir, cef_paths2['cefclient_sources_mac'], \
                         'tests/cefclient/', cefclient_dir, options.quiet)
-    transfer_gypi_files(cef_dir, cef_paths2['cefclient_sources_mac_helper'], \
-                        'tests/cefclient/', cefclient_dir, options.quiet)
-    transfer_gypi_files(cef_dir, cef_paths2['cefclient_bundle_resources_mac'], \
-                        'tests/cefclient/', cefclient_dir, options.quiet)
 
     # transfer cefclient/resources/mac files
-    copy_dir(os.path.join(cef_dir, 'tests/cefclient/resources/mac/'), \
-             os.path.join(output_dir, 'cefclient/resources/mac/'), \
+    copy_dir(os.path.join(cef_dir, 'tests/cefclient/resources/mac'), \
+             os.path.join(cefclient_dir, 'resources/mac'), \
              options.quiet)
 
     # transfer cefsimple files
@@ -703,11 +778,21 @@ elif platform == 'macosx':
                         'tests/cefsimple/', cefsimple_dir, options.quiet)
     transfer_gypi_files(cef_dir, cef_paths2['cefsimple_sources_mac_helper'], \
                         'tests/cefsimple/', cefsimple_dir, options.quiet)
-    transfer_gypi_files(cef_dir, cef_paths2['cefsimple_bundle_resources_mac'], \
-                        'tests/cefsimple/', cefsimple_dir, options.quiet)
 
     # transfer cefsimple/mac files
-    copy_dir(os.path.join(cef_dir, 'tests/cefsimple/mac/'), os.path.join(output_dir, 'cefsimple/mac/'), \
+    copy_dir(os.path.join(cef_dir, 'tests/cefsimple/mac'), \
+             os.path.join(cefsimple_dir, 'mac'), \
+             options.quiet)
+
+    # transfer ceftests files
+    transfer_gypi_files(cef_dir, cef_paths2['ceftests_sources_mac'], \
+                        'tests/ceftests/', ceftests_dir, options.quiet)
+    transfer_gypi_files(cef_dir, cef_paths2['ceftests_sources_mac_helper'], \
+                        'tests/ceftests/', ceftests_dir, options.quiet)
+
+    # transfer ceftests/resources/mac files
+    copy_dir(os.path.join(cef_dir, 'tests/ceftests/resources/mac'), \
+             os.path.join(ceftests_dir, 'resources/mac'), \
              options.quiet)
 
 elif platform == 'linux':
@@ -773,6 +858,10 @@ elif platform == 'linux':
                    mode, output_dir, options.quiet)
 
   if mode == 'standard':
+    # transfer shared files
+    transfer_gypi_files(cef_dir, cef_paths2['shared_sources_linux'], \
+                        'tests/shared/', shared_dir, options.quiet)
+
     # transfer cefclient files
     transfer_gypi_files(cef_dir, cef_paths2['cefclient_sources_linux'], \
                         'tests/cefclient/', cefclient_dir, options.quiet)
@@ -780,6 +869,12 @@ elif platform == 'linux':
     # transfer cefsimple files
     transfer_gypi_files(cef_dir, cef_paths2['cefsimple_sources_linux'], \
                         'tests/cefsimple/', cefsimple_dir, options.quiet)
+
+    # transfer ceftests files
+    transfer_gypi_files(cef_dir, cef_paths2['ceftests_sources_linux'], \
+                        'tests/ceftests/', ceftests_dir, options.quiet)
+    transfer_gypi_files(cef_dir, cef_paths2['ceftests_sources_views'], \
+                        'tests/ceftests/', ceftests_dir, options.quiet)
 
 if not options.noarchive:
   # create an archive for each output directory

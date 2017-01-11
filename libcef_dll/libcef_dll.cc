@@ -1,4 +1,4 @@
-// Copyright (c) 2016 The Chromium Embedded Framework Authors. All rights
+// Copyright (c) 2017 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 //
@@ -12,6 +12,8 @@
 
 #include "include/cef_app.h"
 #include "include/capi/cef_app_capi.h"
+#include "include/cef_file_util.h"
+#include "include/capi/cef_file_util_capi.h"
 #include "include/cef_geolocation.h"
 #include "include/capi/cef_geolocation_capi.h"
 #include "include/cef_origin_whitelist.h"
@@ -80,6 +82,7 @@
 #include "libcef_dll/cpptoc/stream_writer_cpptoc.h"
 #include "libcef_dll/cpptoc/task_runner_cpptoc.h"
 #include "libcef_dll/cpptoc/views/textfield_cpptoc.h"
+#include "libcef_dll/cpptoc/thread_cpptoc.h"
 #include "libcef_dll/cpptoc/urlrequest_cpptoc.h"
 #include "libcef_dll/cpptoc/v8context_cpptoc.h"
 #include "libcef_dll/cpptoc/v8exception_cpptoc.h"
@@ -88,6 +91,7 @@
 #include "libcef_dll/cpptoc/v8value_cpptoc.h"
 #include "libcef_dll/cpptoc/value_cpptoc.h"
 #include "libcef_dll/cpptoc/views/view_cpptoc.h"
+#include "libcef_dll/cpptoc/waitable_event_cpptoc.h"
 #include "libcef_dll/cpptoc/web_plugin_info_cpptoc.h"
 #include "libcef_dll/cpptoc/views/window_cpptoc.h"
 #include "libcef_dll/cpptoc/x509cert_principal_cpptoc.h"
@@ -321,6 +325,7 @@ CEF_EXPORT void cef_shutdown() {
   DCHECK(base::AtomicRefCountIsZero(&CefTaskRunnerCppToC::DebugObjCt));
   DCHECK(base::AtomicRefCountIsZero(&CefTextfieldCppToC::DebugObjCt));
   DCHECK(base::AtomicRefCountIsZero(&CefTextfieldDelegateCToCpp::DebugObjCt));
+  DCHECK(base::AtomicRefCountIsZero(&CefThreadCppToC::DebugObjCt));
   DCHECK(base::AtomicRefCountIsZero(&CefURLRequestClientCToCpp::DebugObjCt));
   DCHECK(base::AtomicRefCountIsZero(&CefURLRequestCppToC::DebugObjCt));
   DCHECK(base::AtomicRefCountIsZero(&CefV8AccessorCToCpp::DebugObjCt));
@@ -334,6 +339,7 @@ CEF_EXPORT void cef_shutdown() {
   DCHECK(base::AtomicRefCountIsZero(&CefValueCppToC::DebugObjCt));
   DCHECK(base::AtomicRefCountIsZero(&CefViewCppToC::DebugObjCt));
   DCHECK(base::AtomicRefCountIsZero(&CefViewDelegateCToCpp::DebugObjCt));
+  DCHECK(base::AtomicRefCountIsZero(&CefWaitableEventCppToC::DebugObjCt));
   DCHECK(base::AtomicRefCountIsZero(&CefWebPluginInfoCppToC::DebugObjCt));
   DCHECK(base::AtomicRefCountIsZero(
       &CefWebPluginInfoVisitorCToCpp::DebugObjCt));
@@ -383,6 +389,147 @@ CEF_EXPORT void cef_enable_highdpi_support() {
 
   // Execute
   CefEnableHighDPISupport();
+}
+
+CEF_EXPORT int cef_create_directory(const cef_string_t* full_path) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: full_path; type: string_byref_const
+  DCHECK(full_path);
+  if (!full_path)
+    return 0;
+
+  // Execute
+  bool _retval = CefCreateDirectory(
+      CefString(full_path));
+
+  // Return type: bool
+  return _retval;
+}
+
+CEF_EXPORT int cef_get_temp_directory(cef_string_t* temp_dir) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: temp_dir; type: string_byref
+  DCHECK(temp_dir);
+  if (!temp_dir)
+    return 0;
+
+  // Translate param: temp_dir; type: string_byref
+  CefString temp_dirStr(temp_dir);
+
+  // Execute
+  bool _retval = CefGetTempDirectory(
+      temp_dirStr);
+
+  // Return type: bool
+  return _retval;
+}
+
+CEF_EXPORT int cef_create_new_temp_directory(const cef_string_t* prefix,
+    cef_string_t* new_temp_path) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: new_temp_path; type: string_byref
+  DCHECK(new_temp_path);
+  if (!new_temp_path)
+    return 0;
+  // Unverified params: prefix
+
+  // Translate param: new_temp_path; type: string_byref
+  CefString new_temp_pathStr(new_temp_path);
+
+  // Execute
+  bool _retval = CefCreateNewTempDirectory(
+      CefString(prefix),
+      new_temp_pathStr);
+
+  // Return type: bool
+  return _retval;
+}
+
+CEF_EXPORT int cef_create_temp_directory_in_directory(
+    const cef_string_t* base_dir, const cef_string_t* prefix,
+    cef_string_t* new_dir) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: base_dir; type: string_byref_const
+  DCHECK(base_dir);
+  if (!base_dir)
+    return 0;
+  // Verify param: new_dir; type: string_byref
+  DCHECK(new_dir);
+  if (!new_dir)
+    return 0;
+  // Unverified params: prefix
+
+  // Translate param: new_dir; type: string_byref
+  CefString new_dirStr(new_dir);
+
+  // Execute
+  bool _retval = CefCreateTempDirectoryInDirectory(
+      CefString(base_dir),
+      CefString(prefix),
+      new_dirStr);
+
+  // Return type: bool
+  return _retval;
+}
+
+CEF_EXPORT int cef_directory_exists(const cef_string_t* path) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: path; type: string_byref_const
+  DCHECK(path);
+  if (!path)
+    return 0;
+
+  // Execute
+  bool _retval = CefDirectoryExists(
+      CefString(path));
+
+  // Return type: bool
+  return _retval;
+}
+
+CEF_EXPORT int cef_delete_file(const cef_string_t* path, int recursive) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: path; type: string_byref_const
+  DCHECK(path);
+  if (!path)
+    return 0;
+
+  // Execute
+  bool _retval = CefDeleteFile(
+      CefString(path),
+      recursive?true:false);
+
+  // Return type: bool
+  return _retval;
+}
+
+CEF_EXPORT int cef_zip_directory(const cef_string_t* src_dir,
+    const cef_string_t* dest_file, int include_hidden_files) {
+  // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
+
+  // Verify param: src_dir; type: string_byref_const
+  DCHECK(src_dir);
+  if (!src_dir)
+    return 0;
+  // Verify param: dest_file; type: string_byref_const
+  DCHECK(dest_file);
+  if (!dest_file)
+    return 0;
+
+  // Execute
+  bool _retval = CefZipDirectory(
+      CefString(src_dir),
+      CefString(dest_file),
+      include_hidden_files?true:false);
+
+  // Return type: bool
+  return _retval;
 }
 
 CEF_EXPORT int cef_get_geolocation(

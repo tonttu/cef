@@ -1,4 +1,4 @@
-// Copyright (c) 2016 The Chromium Embedded Framework Authors. All rights
+// Copyright (c) 2017 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 //
@@ -14,9 +14,9 @@
 #define CEF_LIBCEF_DLL_CPPTOC_TEST_TRANSLATOR_TEST_OBJECT_CHILD_CHILD_CPPTOC_H_
 #pragma once
 
-#ifndef BUILDING_CEF_SHARED
-#pragma message("Warning: "__FILE__" may be accessed DLL-side only")
-#else  // BUILDING_CEF_SHARED
+#if !defined(BUILDING_CEF_SHARED)
+#error This file can be included DLL-side only
+#endif
 
 #include "include/test/cef_translator_test.h"
 #include "include/capi/test/cef_translator_test_capi.h"
@@ -32,5 +32,4 @@ class CefTranslatorTestObjectChildChildCppToC
   CefTranslatorTestObjectChildChildCppToC();
 };
 
-#endif  // BUILDING_CEF_SHARED
 #endif  // CEF_LIBCEF_DLL_CPPTOC_TEST_TRANSLATOR_TEST_OBJECT_CHILD_CHILD_CPPTOC_H_

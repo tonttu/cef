@@ -1,4 +1,4 @@
-// Copyright (c) 2016 The Chromium Embedded Framework Authors. All rights
+// Copyright (c) 2017 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 //
@@ -115,6 +115,7 @@ enum CefWrapperType {
   WT_TASK_RUNNER,
   WT_TEXTFIELD,
   WT_TEXTFIELD_DELEGATE,
+  WT_THREAD,
   WT_TRANSLATOR_TEST,
   WT_TRANSLATOR_TEST_HANDLER,
   WT_TRANSLATOR_TEST_HANDLER_CHILD,
@@ -134,6 +135,7 @@ enum CefWrapperType {
   WT_VALUE,
   WT_VIEW,
   WT_VIEW_DELEGATE,
+  WT_WAITABLE_EVENT,
   WT_WEB_PLUGIN_INFO,
   WT_WEB_PLUGIN_INFO_VISITOR,
   WT_WEB_PLUGIN_UNSTABLE_CALLBACK,
