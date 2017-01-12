@@ -7,6 +7,7 @@
 #define CEF_LIBCEF_BROWSER_OSR_WEB_CONTENTS_VIEW_OSR_H_
 
 #include "content/browser/renderer_host/render_view_host_delegate_view.h"
+#include "content/browser/renderer_host/render_widget_host_view_base_observer.h"
 #include "content/browser/web_contents/web_contents_view.h"
 
 namespace content {
@@ -19,7 +20,8 @@ class CefRenderWidgetHostViewOSR;
 
 // An implementation of WebContentsView for off-screen rendering.
 class CefWebContentsViewOSR : public content::WebContentsView,
-                              public content::RenderViewHostDelegateView {
+                              public content::RenderViewHostDelegateView,
+                              public content::RenderWidgetHostViewBaseObserver {
  public:
   explicit CefWebContentsViewOSR(bool transparent);
   ~CefWebContentsViewOSR() override;
@@ -68,6 +70,10 @@ class CefWebContentsViewOSR : public content::WebContentsView,
       const gfx::Vector2d& image_offset,
       const content::DragEventSourceInfo& event_info) override;
   void UpdateDragCursor(blink::WebDragOperation operation) override;
+
+  // RenderWidgetHostViewBaseObserver
+  void OnRenderWidgetHostViewBaseDestroyed(
+      content::RenderWidgetHostViewBase* view) override;
 
  private:
   const bool transparent_;

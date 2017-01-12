@@ -24,6 +24,8 @@ CefWebContentsViewOSR::CefWebContentsViewOSR(bool transparent)
 }
 
 CefWebContentsViewOSR::~CefWebContentsViewOSR() {
+  if (view_)
+    view_->RemoveObserver(this);
 }
 
 void CefWebContentsViewOSR::set_web_contents(
@@ -150,6 +152,7 @@ content::RenderWidgetHostViewBase* CefWebContentsViewOSR::CreateViewForWidget(
 
   view_ = new CefRenderWidgetHostViewOSR(transparent_, render_widget_host,
                                          NULL);
+  view_->AddObserver(this);
   return view_;
 }
 
@@ -272,5 +275,12 @@ void CefWebContentsViewOSR::UpdateDragCursor(
     handler->UpdateDragCursor(
         browser.get(),
         static_cast<CefRenderHandler::DragOperation>(operation));
+  }
+}
+
+void CefWebContentsViewOSR::OnRenderWidgetHostViewBaseDestroyed(
+    content::RenderWidgetHostViewBase* view) {
+  if (view_ == view) {
+    view_ = nullptr;
   }
 }
