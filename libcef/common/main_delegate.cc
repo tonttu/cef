@@ -395,10 +395,7 @@ bool CefMainDelegate::BasicStartupComplete(int* exit_code) {
       if (!log_file.empty())
         has_log_file_cmdline = true;
     }
-    if (log_file.empty())
-      log_file = GetDefaultLogFile();
-    DCHECK(!log_file.empty());
-    if (!has_log_file_cmdline)
+    if (!has_log_file_cmdline && !log_file.empty())
       command_line->AppendSwitchPath(switches::kLogFile, log_file);
 
     if (settings.log_severity != LOGSEVERITY_DEFAULT) {
