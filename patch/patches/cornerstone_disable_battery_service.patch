@@ -1,0 +1,13 @@
+diff --git content/browser/browser_main_loop.cc content/browser/browser_main_loop.cc
+index 325b85d..731f1ab 100644
+--- content/browser/browser_main_loop.cc
++++ content/browser/browser_main_loop.cc
+@@ -1174,7 +1174,7 @@ void BrowserMainLoop::ShutdownThreadsAndCleanUp() {
+ #if !defined(OS_ANDROID)
+   {
+     TRACE_EVENT0("shutdown", "BrowserMainLoop::Subsystem:BatteryStatusService");
+-    device::BatteryStatusService::GetInstance()->Shutdown();
++    // device::BatteryStatusService::GetInstance()->Shutdown();
+   }
+ #endif
+   {
