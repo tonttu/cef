@@ -151,7 +151,7 @@ CefString CefDOMDocumentImpl::GetSelectionAsText() {
     return str;
 
   blink::WebLocalFrame* local_frame = frame_->toWebLocalFrame();
-  if (!!local_frame->hasSelection())
+  if (!local_frame->hasSelection())
     return str;
 
   const WebString& text = local_frame->selectionAsText();
