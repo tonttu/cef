@@ -92,26 +92,53 @@ index 1212ad2..8894ed3 100644
    # Indicates if Wayland display server support is enabled.
    enable_wayland_server = is_chromeos
  
+diff --git ui/events/platform/x11/BUILD.gn ui/events/platform/x11/BUILD.gn
+index ede8caf..b13f780 100644
+--- ui/events/platform/x11/BUILD.gn
++++ ui/events/platform/x11/BUILD.gn
+@@ -37,7 +37,7 @@ component("x11") {
+     "//base",
+   ]
+ 
+-  if (use_glib) {
++  if (use_glib_msg) {
+     sources += [
+       "x11_event_source_glib.cc",
+       "x11_event_source_glib.h",
+diff --git ui/events/platform/x11/x11_event_source_glib.cc ui/events/platform/x11/x11_event_source_glib.cc
+index 13ee489..3fac8da 100644
+--- ui/events/platform/x11/x11_event_source_glib.cc
++++ ui/events/platform/x11/x11_event_source_glib.cc
+@@ -94,9 +94,4 @@ void X11EventSourceGlib::InitXSource(int fd) {
+   g_source_attach(x_source_, g_main_context_default());
+ }
+ 
+-// static
+-std::unique_ptr<PlatformEventSource> PlatformEventSource::CreateDefault() {
+-  return base::MakeUnique<X11EventSourceGlib>(gfx::GetXDisplay());
+-}
+-
+ }  // namespace ui
 diff --git ui/events/platform/x11/x11_event_source_libevent.cc ui/events/platform/x11/x11_event_source_libevent.cc
-index 708ab41..86c35af 100644
+index 708ab41..8aa9778 100644
 --- ui/events/platform/x11/x11_event_source_libevent.cc
 +++ ui/events/platform/x11/x11_event_source_libevent.cc
-@@ -81,6 +81,7 @@ std::unique_ptr<ui::Event> TranslateXI2EventToEvent(const XEvent& xev) {
- }
+@@ -19,6 +19,7 @@
  
- // Translates a XEvent into a ui::Event.
-+/*
- std::unique_ptr<ui::Event> TranslateXEventToEvent(const XEvent& xev) {
-   int flags = EventFlagsFromXEvent(xev);
-   switch (xev.type) {
-@@ -129,6 +130,7 @@ std::unique_ptr<ui::Event> TranslateXEventToEvent(const XEvent& xev) {
-   }
-   return nullptr;
+ namespace ui {
+ 
++#if 0
+ namespace {
+ 
+ // Translates XI2 XEvent into a ui::Event.
+@@ -131,6 +132,7 @@ std::unique_ptr<ui::Event> TranslateXEventToEvent(const XEvent& xev) {
  }
-+*/
  
  }  // namespace
++#endif
  
+ X11EventSourceLibevent::X11EventSourceLibevent(XDisplay* display)
+     : event_source_(this, display) {
 @@ -155,14 +157,7 @@ void X11EventSourceLibevent::RemoveXEventDispatcher(
  }
  
@@ -128,3 +155,13 @@ index 708ab41..86c35af 100644
  }
  
  void X11EventSourceLibevent::AddEventWatcher() {
+@@ -205,4 +200,9 @@ void X11EventSourceLibevent::OnFileCanWriteWithoutBlocking(int fd) {
+   NOTREACHED();
+ }
+ 
++// static
++std::unique_ptr<PlatformEventSource> PlatformEventSource::CreateDefault() {
++  return base::MakeUnique<X11EventSourceLibevent>(gfx::GetXDisplay());
++}
++
+ }  // namespace ui
