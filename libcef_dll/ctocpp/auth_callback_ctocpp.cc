@@ -23,14 +23,7 @@ void CefAuthCallbackCToCpp::Continue(const CefString& username,
 
   // AUTO-GENERATED CONTENT - DELETE THIS COMMENT BEFORE MODIFYING
 
-  // Verify param: username; type: string_byref_const
-  DCHECK(!username.empty());
-  if (username.empty())
-    return;
-  // Verify param: password; type: string_byref_const
-  DCHECK(!password.empty());
-  if (password.empty())
-    return;
+  // Unverified params: username, password
 
   // Execute
   _struct->cont(_struct,

@@ -585,8 +585,6 @@ typedef struct _cef_browser_host_t {
       const struct _cef_touch_event_t* event);
 
   ///
-
-  ///
   // Send a focus event to the browser.
   ///
   void (CEF_CALLBACK *send_focus_event)(struct _cef_browser_host_t* self,
