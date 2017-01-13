@@ -114,16 +114,16 @@ gfx::Point CefBrowserPlatformDelegateOsr::GetScreenPoint(
 }
 
 void CefBrowserPlatformDelegateOsr::ViewText(const std::string& text) {
-  native_delegate_->ViewText(text);
+  //native_delegate_->ViewText(text);
 }
 
 void CefBrowserPlatformDelegateOsr::HandleKeyboardEvent(
     const content::NativeWebKeyboardEvent& event) {
-  native_delegate_->HandleKeyboardEvent(event);
+  //native_delegate_->HandleKeyboardEvent(event);
 }
 
 void CefBrowserPlatformDelegateOsr::HandleExternalProtocol(const GURL& url) {
-  native_delegate_->HandleExternalProtocol(url);
+  //native_delegate_->HandleExternalProtocol(url);
 }
 
 void CefBrowserPlatformDelegateOsr::TranslateKeyEvent(
@@ -162,16 +162,19 @@ CefEventHandle CefBrowserPlatformDelegateOsr::GetEventHandle(
 
 std::unique_ptr<CefFileDialogRunner>
     CefBrowserPlatformDelegateOsr::CreateFileDialogRunner() {
-  return native_delegate_->CreateFileDialogRunner();
+  //return native_delegate_->CreateFileDialogRunner();
+  return nullptr;
 }
 
 std::unique_ptr<CefJavaScriptDialogRunner>
     CefBrowserPlatformDelegateOsr::CreateJavaScriptDialogRunner() {
-  return native_delegate_->CreateJavaScriptDialogRunner();
+  //return native_delegate_->CreateJavaScriptDialogRunner();
+  return nullptr;
 }
 
 std::unique_ptr<CefMenuRunner> CefBrowserPlatformDelegateOsr::CreateMenuRunner() {
-  return native_delegate_->CreateMenuRunner();
+  //return native_delegate_->CreateMenuRunner();
+  return nullptr;
 }
 
 bool CefBrowserPlatformDelegateOsr::IsWindowless() const {
