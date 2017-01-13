@@ -2315,12 +2315,13 @@ bool CefBrowserHostImpl::HandleContextMenu(
     content::WebContents* web_contents,
     const content::ContextMenuParams& params) {
   CEF_REQUIRE_UIT();
-  if (!menu_manager_.get() && platform_delegate_) {
+  /*if (!menu_manager_.get() && platform_delegate_) {
     menu_manager_.reset(
         new CefMenuManager(this,
             platform_delegate_->CreateMenuRunner()));
   }
-  return menu_manager_->CreateContextMenu(params);
+  return menu_manager_->CreateContextMenu(params);*/
+  return false;
 }
 
 void CefBrowserHostImpl::UpdatePreferredSize(content::WebContents* source,
