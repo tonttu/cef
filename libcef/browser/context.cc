@@ -31,11 +31,7 @@
 #include "ui/base/ui_base_switches.h"
 
 #if defined(OS_WIN)
-#include "chrome_elf/chrome_elf_main.h"
 #include "content/public/app/sandbox_helper_win.h"
-#include "components/crash/content/app/crash_switches.h"
-#include "components/crash/content/app/crashpad.h"
-#include "components/crash/content/app/run_as_crashpad_handler_win.h"
 #include "sandbox/win/src/sandbox_types.h"
 #endif
 
@@ -72,16 +68,6 @@ void DisableFMA3() {
 }
 #endif  // defined(ARCH_CPU_X86_64)
 
-// Signal chrome_elf to initialize crash reporting, rather than doing it in
-// DllMain. See https://crbug.com/656800 for details.
-void InitializeCrashReporting() {
-  static bool initialized = false;
-  if (initialized)
-    return;
-  initialized = true;
-  SignalInitializeCrashReporting();
-}
-
 #endif  // defined(OS_WIN)
 
 }  // namespace
@@ -93,7 +79,6 @@ int CefExecuteProcess(const CefMainArgs& args,
 #if defined(ARCH_CPU_X86_64)
   DisableFMA3();
 #endif
-  InitializeCrashReporting();
 #endif
 
   base::CommandLine command_line(base::CommandLine::NO_PROGRAM);
@@ -117,11 +102,6 @@ int CefExecuteProcess(const CefMainArgs& args,
       command_line.GetSwitchValueASCII(switches::kProcessType);
   if (process_type.empty())
     return -1;
-
-#if defined(OS_WIN)
-  if (process_type == crash_reporter::switches::kCrashpadHandler)
-    return crash_reporter::RunAsCrashpadHandler(command_line);
-#endif
 
   CefMainDelegate main_delegate(application);
 
@@ -153,7 +133,6 @@ bool CefInitialize(const CefMainArgs& args,
 #if defined(ARCH_CPU_X86_64)
   DisableFMA3();
 #endif
-  InitializeCrashReporting();
 #endif
 
   // Return true if the global context already exists.
@@ -288,11 +267,6 @@ bool CefContext::Initialize(const CefMainArgs& args,
     NOTIMPLEMENTED() << "multi_threaded_message_loop is not supported.";
     return false;
   }
-#endif
-
-#if defined(OS_WIN)
-  // Signal Chrome Elf that Chrome has begun to start.
-  SignalChromeElf();
 #endif
 
   main_delegate_.reset(new CefMainDelegate(application));

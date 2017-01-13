@@ -10,9 +10,6 @@ The following components are required. CEF will not function without them.
 * CEF core library.
   * libcef.dll
 
-* Crash reporting library.
-  * chrome_elf.dll
-
 * Unicode support data.
   * icudtl.dat
 
