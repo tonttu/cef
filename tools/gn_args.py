@@ -246,6 +246,9 @@ def GetRequiredArgs():
     result['use_glib_msg'] = False
     # Include debug symbols so that we can get meaningful backtraces
     result['symbol_level'] = 1
+    # H264, MP3, AAC and MP4
+    result['proprietary_codecs'] = True
+    result['ffmpeg_branding'] = 'Chrome'
 
   return result
 
