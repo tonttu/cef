@@ -225,6 +225,13 @@ def GetRequiredArgs():
     # CEF does not currently support component builds. See
     # https://bitbucket.org/chromiumembedded/cef/issues/1617
     'is_component_build': False,
+
+    # Include debug symbols so that we can get meaningful backtraces
+    'symbol_level': 1,
+
+    # H264, MP3, AAC and MP4
+    'proprietary_codecs': True,
+    'ffmpeg_branding': 'Chrome',
   }
 
   if platform == 'linux' or platform == 'macosx':
@@ -244,11 +251,6 @@ def GetRequiredArgs():
     result['use_allocator'] = 'none'
     # glib message loop conflicts with Qt message loop
     result['use_glib_msg'] = False
-    # Include debug symbols so that we can get meaningful backtraces
-    result['symbol_level'] = 1
-    # H264, MP3, AAC and MP4
-    result['proprietary_codecs'] = True
-    result['ffmpeg_branding'] = 'Chrome'
 
   return result
 
