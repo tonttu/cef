@@ -1,0 +1,173 @@
+diff --git components/autofill/content/renderer/page_click_tracker.cc components/autofill/content/renderer/page_click_tracker.cc
+index 84de46b..9ab5414 100644
+--- components/autofill/content/renderer/page_click_tracker.cc
++++ components/autofill/content/renderer/page_click_tracker.cc
+@@ -62,7 +62,7 @@ PageClickTracker::PageClickTracker(content::RenderFrame* render_frame,
+ PageClickTracker::~PageClickTracker() {
+ }
+ 
+-void PageClickTracker::OnMouseDown(const WebNode& mouse_down_node) {
++void PageClickTracker::OnMouseDown(const WebNode& mouse_down_node, float localPointX, float localPointY) {
+   focused_node_was_last_clicked_ = !mouse_down_node.isNull() &&
+                                    mouse_down_node.focused();
+ 
+@@ -118,8 +118,8 @@ void PageClickTracker::Legacy::OnDestruct() {
+   // No-op. Don't delete |this|.
+ }
+ 
+-void PageClickTracker::Legacy::OnMouseDown(const WebNode& mouse_down_node) {
+-  tracker_->OnMouseDown(mouse_down_node);
++void PageClickTracker::Legacy::OnMouseDown(const WebNode& mouse_down_node, float localPointX, float localPointY) {
++  tracker_->OnMouseDown(mouse_down_node, localPointX, localPointY);
+ }
+ 
+ void PageClickTracker::Legacy::FocusChangeComplete() {
+diff --git components/autofill/content/renderer/page_click_tracker.h components/autofill/content/renderer/page_click_tracker.h
+index f77b7a4..2ddb3e8 100644
+--- components/autofill/content/renderer/page_click_tracker.h
++++ components/autofill/content/renderer/page_click_tracker.h
+@@ -42,7 +42,7 @@ class PageClickTracker : public content::RenderFrameObserver {
+ 
+     // RenderViewObserver implementation.
+     void OnDestruct() override;
+-    void OnMouseDown(const blink::WebNode& mouse_down_node) override;
++    void OnMouseDown(const blink::WebNode& mouse_down_node, float localPointX, float localPointY) override;
+     void FocusChangeComplete() override;
+ 
+    private:
+@@ -56,7 +56,7 @@ class PageClickTracker : public content::RenderFrameObserver {
+ 
+   // RenderViewObserver methods forwarded from Legacy. Should be
+   // merged into RenderFrameObserver.
+-  void OnMouseDown(const blink::WebNode& mouse_down_node);
++  void OnMouseDown(const blink::WebNode& mouse_down_node, float localPointX, float localPointY);
+   void FocusChangeComplete();
+   void DoFocusChangeComplete();
+ 
+diff --git content/public/renderer/render_view_observer.h content/public/renderer/render_view_observer.h
+index 7428e61..1701477 100644
+--- content/public/renderer/render_view_observer.h
++++ content/public/renderer/render_view_observer.h
+@@ -63,7 +63,7 @@ class CONTENT_EXPORT RenderViewObserver : public IPC::Listener,
+   // These match the RenderView methods.
+   virtual void DidHandleGestureEvent(const blink::WebGestureEvent& event) {}
+ 
+-  virtual void OnMouseDown(const blink::WebNode& mouse_down_node) {}
++  virtual void OnMouseDown(const blink::WebNode& mouse_down_node, float localPointX, float localPointY) {}
+ 
+   // These match incoming IPCs.
+   virtual void Navigate(const GURL& url) {}
+diff --git content/renderer/render_view_impl.cc content/renderer/render_view_impl.cc
+index fb4d3a7..bde75d6 100644
+--- content/renderer/render_view_impl.cc
++++ content/renderer/render_view_impl.cc
+@@ -1949,9 +1949,9 @@ void RenderViewImpl::show(WebNavigationPolicy policy) {
+   SetPendingWindowRect(initial_rect_);
+ }
+ 
+-void RenderViewImpl::onMouseDown(const WebNode& mouse_down_node) {
++void RenderViewImpl::onMouseDown(const WebNode& mouse_down_node, float localPointX, float localPointY) {
+   FOR_EACH_OBSERVER(
+-      RenderViewObserver, observers_, OnMouseDown(mouse_down_node));
++      RenderViewObserver, observers_, OnMouseDown(mouse_down_node, localPointX, localPointY));
+ }
+ 
+ void RenderViewImpl::didHandleGestureEvent(
+diff --git content/renderer/render_view_impl.h content/renderer/render_view_impl.h
+index 4944cab..edc9b7c 100644
+--- content/renderer/render_view_impl.h
++++ content/renderer/render_view_impl.h
+@@ -285,7 +285,7 @@ class CONTENT_EXPORT RenderViewImpl
+   void show(blink::WebNavigationPolicy policy) override;
+   void didHandleGestureEvent(const blink::WebGestureEvent& event,
+                              bool event_cancelled) override;
+-  void onMouseDown(const blink::WebNode& mouse_down_node) override;
++  void onMouseDown(const blink::WebNode& mouse_down_node, float localPointX, float localPointY) override;
+   void initializeLayerTreeView() override;
+ 
+   // TODO(lfg): Remove once WebViewClient no longer inherits from
+diff --git third_party/WebKit/Source/core/input/EventHandler.cpp third_party/WebKit/Source/core/input/EventHandler.cpp
+index 504fbb8..37b1dfe 100644
+--- third_party/WebKit/Source/core/input/EventHandler.cpp
++++ third_party/WebKit/Source/core/input/EventHandler.cpp
+@@ -716,7 +716,9 @@ WebInputEventResult EventHandler::handleMousePressEvent(
+     ASSERT(mouseEvent.type() == PlatformEvent::MousePressed);
+     HitTestResult result = mev.hitTestResult();
+     result.setToShadowHostIfInUserAgentShadowRoot();
+-    m_frame->chromeClient().onMouseDown(result.innerNode());
++    m_frame->chromeClient().onMouseDown(result.innerNode(),
++                                        result.localPoint().x().toFloat(),
++                                        result.localPoint().y().toFloat());
+   }
+ 
+   return eventResult;
+diff --git third_party/WebKit/Source/core/input/GestureManager.cpp third_party/WebKit/Source/core/input/GestureManager.cpp
+index a9fc821..df28ccf 100644
+--- third_party/WebKit/Source/core/input/GestureManager.cpp
++++ third_party/WebKit/Source/core/input/GestureManager.cpp
+@@ -222,7 +222,9 @@ WebInputEventResult GestureManager::handleGestureTap(
+     DCHECK(gestureEvent.type() == PlatformEvent::GestureTap);
+     HitTestResult result = currentHitTest;
+     result.setToShadowHostIfInUserAgentShadowRoot();
+-    m_frame->chromeClient().onMouseDown(result.innerNode());
++    m_frame->chromeClient().onMouseDown(result.innerNode(),
++                                        targetedEvent.localPoint().x().toFloat(),
++                                        targetedEvent.localPoint().y().toFloat());
+   }
+ 
+   // FIXME: Use a hit-test cache to avoid unnecessary hit tests.
+diff --git third_party/WebKit/Source/core/page/ChromeClient.h third_party/WebKit/Source/core/page/ChromeClient.h
+index ce18973..77add55 100644
+--- third_party/WebKit/Source/core/page/ChromeClient.h
++++ third_party/WebKit/Source/core/page/ChromeClient.h
+@@ -313,7 +313,7 @@ class CORE_EXPORT ChromeClient : public HostWindow {
+ 
+   virtual void showUnhandledTapUIIfNeeded(IntPoint, Node*, bool) {}
+ 
+-  virtual void onMouseDown(Node*) {}
++  virtual void onMouseDown(Node*, float /*localPointX*/, float /*localPointY*/) {}
+ 
+   virtual void didUpdateTopControls() const {}
+ 
+diff --git third_party/WebKit/Source/web/ChromeClientImpl.cpp third_party/WebKit/Source/web/ChromeClientImpl.cpp
+index 021a083..93e833b 100644
+--- third_party/WebKit/Source/web/ChromeClientImpl.cpp
++++ third_party/WebKit/Source/web/ChromeClientImpl.cpp
+@@ -1035,9 +1035,9 @@ void ChromeClientImpl::showUnhandledTapUIIfNeeded(
+         WebPoint(tappedPositionInViewport), WebNode(tappedNode), pageChanged);
+ }
+ 
+-void ChromeClientImpl::onMouseDown(Node* mouseDownNode) {
++void ChromeClientImpl::onMouseDown(Node* mouseDownNode, float localPointX, float localPointY) {
+   if (m_webView->client())
+-    m_webView->client()->onMouseDown(WebNode(mouseDownNode));
++    m_webView->client()->onMouseDown(WebNode(mouseDownNode), localPointX, localPointY);
+ }
+ 
+ void ChromeClientImpl::handleKeyboardEventOnTextField(
+diff --git third_party/WebKit/Source/web/ChromeClientImpl.h third_party/WebKit/Source/web/ChromeClientImpl.h
+index c6f6544..caef93c 100644
+--- third_party/WebKit/Source/web/ChromeClientImpl.h
++++ third_party/WebKit/Source/web/ChromeClientImpl.h
+@@ -203,7 +203,7 @@ class WEB_EXPORT ChromeClientImpl final : public ChromeClient {
+   void registerViewportLayers() const override;
+ 
+   void showUnhandledTapUIIfNeeded(IntPoint, Node*, bool) override;
+-  void onMouseDown(Node*) override;
++  void onMouseDown(Node*, float /*localPointX*/, float /*localPointY*/) override;
+   void didUpdateTopControls() const override;
+ 
+   CompositorProxyClient* createCompositorProxyClient(LocalFrame*) override;
+diff --git third_party/WebKit/public/web/WebViewClient.h third_party/WebKit/public/web/WebViewClient.h
+index 3457214..8bf7df1 100644
+--- third_party/WebKit/public/web/WebViewClient.h
++++ third_party/WebKit/public/web/WebViewClient.h
+@@ -211,7 +211,7 @@ class WebViewClient : protected WebWidgetClient {
+   // Called immediately after a mousedown event is dispatched due to a mouse
+   // press or gesture tap.
+   // Note: This is called even when the mouse down event is prevent default.
+-  virtual void onMouseDown(const WebNode& mouseDownNode) {}
++  virtual void onMouseDown(const WebNode& mouseDownNode, float localPointX, float localPointY) {}
+ 
+   // Session history -----------------------------------------------------
+ 

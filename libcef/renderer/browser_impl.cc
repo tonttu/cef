@@ -533,32 +533,22 @@ void CefBrowserImpl::DraggableRegionsChanged(blink::WebFrame* frame) {
   Send(new CefHostMsg_UpdateDraggableRegions(routing_id(), regions));
 }
 
-void CefBrowserImpl::DidHandleGestureEvent(const blink::WebGestureEvent& event) {
-  if (event.type != blink::WebGestureEvent::GestureTap) {
+// This is also called for touch events
+void CefBrowserImpl::OnMouseDown(const blink::WebNode & mouse_down_node, float localPointX, float localPointY)
+{
+  if (render_view()->GetWebView()->textInputType() == blink::WebTextInputTypeNone)
     return;
-  }
-
-  blink::WebTextInputType type = render_view()->GetWebView()->textInputInfo().type;
-  if (type == blink::WebTextInputTypeNone) {
-    return;
-  }
 
   CefRefPtr<CefApp> app = CefContentClient::Get()->application();
-  if (app.get()) {
-    CefRefPtr<CefRenderProcessHandler> handler =
-        app->GetRenderProcessHandler();
-    if (handler.get()) {
+  if (app.get() && mouse_down_node.isElementNode()) {
+    CefRefPtr<CefRenderProcessHandler> handler = app->GetRenderProcessHandler();
+    const blink::WebElement & e = static_cast<const blink::WebElement &>(mouse_down_node);
+    if (handler.get() && !e.isNull()) {
       float scale = render_view()->GetWebView()->pageScaleFactor();
-      auto frame = render_view()->GetWebView()->focusedFrame();
-      if (frame) {
-        blink::WebElement e = frame->document().focusedElement();
-        if (!e.isNull()) {
-          blink::WebRect r = e.boundsInViewport();
-          CefRect rect(r.x, r.y, r.width, r.height);
-          CefPoint p(event.x, event.y);
-          handler->OnEditableNodeTouched(this, rect, p, scale);
-        }
-      }
+      blink::WebRect r = e.boundsInViewport();
+      CefRect rect(r.x, r.y, r.width, r.height);
+      CefPoint p(r.x + localPointX * scale, r.y + localPointY * scale);
+      handler->OnEditableNodeTouched(this, rect, p, scale);
     }
   }
 }
